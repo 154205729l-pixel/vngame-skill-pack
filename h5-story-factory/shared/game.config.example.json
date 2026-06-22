@@ -1,0 +1,15 @@
+{
+  "gameId": "game-example",
+  "title": "游戏标题",
+  "slug": "game-example",
+  "sourceScript": "剧本.md",
+  "storyState": "story.json",
+  "exportFile": "作品.html",
+  "assetDir": "dist/assets",
+  "audioDir": "Audio",
+  "chapters": 5,
+  "deploy": {
+    "target": "cos",
+    "prefix": "h5/game-example/"
+  }
+}

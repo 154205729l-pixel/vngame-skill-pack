@@ -1,0 +1,15 @@
+{
+  "gameId": "demo-worldcup-night",
+  "title": "世界杯前夜",
+  "slug": "demo-worldcup-night",
+  "sourceScript": "剧本.md",
+  "storyState": "story.json",
+  "exportFile": "作品.html",
+  "assetDir": "dist/assets",
+  "audioDir": "Audio",
+  "chapters": 1,
+  "deploy": {
+    "target": "static",
+    "prefix": "h5/demo-worldcup-night/"
+  }
+}

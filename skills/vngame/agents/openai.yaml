@@ -1,0 +1,3 @@
+display_name: VNGame
+short_description: Build, storyboard, export, and deploy H5 interactive story games.
+default_prompt: 用 vngame 新建一个互动剧情 H5，并和我一起完成剧本、storyboard、素材、导出和上线检查。

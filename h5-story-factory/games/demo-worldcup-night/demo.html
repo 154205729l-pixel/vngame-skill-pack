@@ -1,0 +1,2038 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>世界杯前夜</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+:root {
+  --magenta: #e91e8c;
+  --cyan: #00e5ff;
+  --teal: #00bfa5;
+  --navy: #0d1b2a;
+  --gold: #ffd54f;
+}
+html,body {
+  width:100%; min-height:100vh; overflow:auto; background:#050507;
+  display:flex; align-items:center; justify-content:center;
+  font-family:'PingFang SC','Noto Sans SC',sans-serif;
+}
+#viewport {
+  position:relative;
+  width:390px; height:844px; flex-shrink:0;
+  border-radius:44px; overflow:hidden;
+  box-shadow:0 0 0 10px #1a1a1c, 0 40px 80px rgba(0,0,0,.8);
+}
+#game {
+  position:relative; width:100%; height:100%;
+  overflow:hidden; background:#000; cursor:pointer;
+}
+
+/* ── 场景层 ── */
+#scene {
+  position:absolute; inset:0; z-index:1;
+  background-size:cover; background-position:center 40%;
+}
+.scene-img {
+  position:absolute; inset:0;
+  width:108%; height:108%;
+  left:-4%; top:-4%;
+  object-fit:cover; object-position:center 40%;
+  display:none; opacity:0;
+  transition:opacity .55s ease;
+  transform:scale(1.02) translateX(0);
+  will-change:opacity, transform;
+}
+.scene-img.visible { opacity:1; }
+.scene-img.visible.pan-left { animation:scenePanLeft 8s ease-out forwards; }
+.scene-img.visible.pan-right { animation:scenePanRight 8s ease-out forwards; }
+@keyframes scenePanLeft {
+  from { transform:scale(1.04) translateX(2.5%); }
+  to { transform:scale(1.04) translateX(-2.5%); }
+}
+@keyframes scenePanRight {
+  from { transform:scale(1.04) translateX(-2.5%); }
+  to { transform:scale(1.04) translateX(2.5%); }
+}
+#scene-placeholder {
+  position:absolute; inset:0;
+  display:flex; align-items:center; justify-content:center;
+  font-size:11px; color:rgba(255,255,255,.22);
+  text-align:center; padding:40px; line-height:1.8;
+  pointer-events:none;
+}
+#scene::after {
+  content:''; position:absolute; inset:0;
+  background:linear-gradient(180deg, transparent 55%, rgba(0,0,0,.6) 100%);
+}
+
+/* ── HUD ── */
+#hud {
+  position:absolute; top:0; left:0; right:0; z-index:30;
+  background:linear-gradient(180deg, rgba(0,0,0,.75) 0%, transparent 100%);
+  padding:max(14px, env(safe-area-inset-top,14px)) 16px 20px;
+  display:flex; flex-direction:column; gap:6px;
+}
+#chapter-label {
+  font-size:10px; font-weight:700; letter-spacing:3px;
+  color:var(--cyan);
+}
+#score-row { display:flex; align-items:center; gap:8px; }
+#score-bar-wrap { flex:1; height:2px; background:rgba(255,255,255,.12); overflow:hidden; }
+#score-bar-fill {
+  height:100%; width:0%;
+  background:linear-gradient(90deg, var(--teal), var(--cyan));
+  transition:width .5s ease;
+}
+#score-label { font-size:10px; color:rgba(255,255,255,.35); letter-spacing:1px; }
+#score-num { font-size:10px; color:var(--cyan); font-weight:700; }
+
+/* ── 对话框（GameT0 风格，响应式） ── */
+#dialog-box {
+  position:absolute;
+  left:clamp(12px, 4vw, 20px);
+  bottom:calc(max(12px, env(safe-area-inset-bottom, 0px)) + 8px);
+  right:clamp(12px, 4vw, 20px);
+  height:clamp(88px, 13vh, 108px);
+  background:rgb(7,16,23);
+  border:1px solid #1a1a1a;
+  z-index:20;
+  transition:opacity .35s ease;
+}
+#dialog-box.hidden { opacity:0; pointer-events:none; }
+#dialog-avatar {
+  position:absolute; left:10px; top:8px;
+  width:clamp(70px, 10vh, 82px); height:clamp(70px, 10vh, 82px);
+  background:#02060a;
+  outline:.5px solid rgba(255,255,255,.15);
+  display:flex; align-items:center; justify-content:center;
+  overflow:hidden;
+}
+#dialog-avatar img { width:100%; height:100%; object-fit:contain; display:block; }
+#dialog-right {
+  position:absolute;
+  left:calc(clamp(70px,10vh,82px) + 20px);
+  top:8px; right:8px;
+  bottom:8px;
+  overflow:hidden;
+}
+#speaker {
+  font-size:10px; font-weight:700; letter-spacing:2px;
+  color:rgba(0,229,255,.7); margin-bottom:5px;
+}
+#dialog-text {
+  font-size:15px; line-height:22px; color:#9e9e9e;
+  word-break:break-all;
+  font-family:'Source Han Sans','PingFang SC','Microsoft YaHei',sans-serif;
+}
+#dialog-text strong { color:#ddd; }
+#tap-hint {
+  position:absolute; right:14px; bottom:10px;
+  font-size:10px; color:rgba(158,158,158,.35); letter-spacing:2px;
+  z-index:3; animation:blink .7s step-end infinite;
+}
+
+/* ── 全屏居中文字 ── */
+#fullscreen-text-panel {
+  position:absolute; inset:0; z-index:35;
+  background:rgba(0,0,0,.8);
+  display:none; align-items:center; justify-content:center;
+  padding:40px;
+}
+#fullscreen-text-panel.show { display:flex; }
+#fullscreen-text-content {
+  font-size:22px; line-height:1.8; color:#fff;
+  text-align:center;
+  font-family:Georgia,"Noto Serif SC",serif;
+  letter-spacing:2px;
+  white-space:pre-line;
+}
+#fullscreen-text-content strong {
+  color:#fff;
+  text-shadow:0 0 20px rgba(255,255,255,.6);
+}
+#transition-panel {
+  position:absolute; inset:0; z-index:60;
+  display:none; align-items:center; justify-content:center;
+  flex-direction:column;
+  background:#000;
+  color:#fff;
+  pointer-events:auto;
+  padding:0 40px;
+}
+#transition-panel.show { display:flex; }
+#transition-cover {
+  width:min(46vw, 160px);
+  max-height:34vh;
+  object-fit:cover;
+  border:1px solid rgba(255,255,255,.95);
+  display:none;
+  margin-bottom:30px;
+  background:#02060a;
+  animation:transitionTitle 2s ease both;
+}
+#transition-panel.has-cover #transition-cover { display:block; }
+#transition-text {
+  font-size:24px; line-height:1.6;
+  letter-spacing:4px; text-align:center;
+  font-family:Georgia,"Noto Serif SC",serif;
+  color:rgba(255,255,255,.92);
+  animation:transitionTitle 2s ease both;
+}
+@keyframes transitionTitle {
+  0% { opacity:0; transform:translateY(8px); }
+  18%, 78% { opacity:1; transform:translateY(0); }
+  100% { opacity:0; transform:translateY(-6px); }
+}
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+
+/* ── 浮层插图 ── */
+.panel {
+  position:absolute; z-index:25;
+  width:44%; max-width:160px;
+  border:2px solid rgba(0,229,255,.3);
+  background:rgba(13,27,42,.7);
+  overflow:hidden;
+  animation:panelIn .3s ease;
+  border-radius:4px;
+}
+.panel.br { bottom:calc(clamp(88px,13vh,108px) + max(16px,env(safe-area-inset-bottom,16px)) + 12px); right:12px; }
+.panel.bl { bottom:calc(clamp(88px,13vh,108px) + max(16px,env(safe-area-inset-bottom,16px)) + 12px); left:12px; }
+.panel.tr { top:90px; right:12px; }
+.panel.tl { top:90px; left:12px; }
+.panel img { width:100%; display:block; }
+.panel-placeholder {
+  padding:10px 8px;
+  font-size:9px; color:rgba(0,229,255,.5); line-height:1.5;
+  min-height:80px; display:flex; align-items:center;
+}
+@keyframes panelIn {
+  from { opacity:0; transform:scale(.85); }
+  to   { opacity:1; transform:scale(1); }
+}
+
+/* ── 选择题 ── */
+#choice-panel {
+  position:absolute; inset:0; z-index:40;
+  background:rgba(0,0,0,.92); backdrop-filter:blur(8px);
+  display:none; flex-direction:column;
+  align-items:center; justify-content:center;
+  padding:24px 20px max(24px,env(safe-area-inset-bottom,24px));
+}
+#choice-panel.show { display:flex; }
+#choice-question {
+  font-size:15px; font-weight:700; color:#fff;
+  text-align:center; margin-bottom:28px; line-height:1.6;
+  font-family:Georgia, "Noto Serif SC", serif;
+}
+.choice-btn {
+  width:100%; max-width:340px;
+  padding:14px 18px; margin-bottom:12px;
+  background:rgba(0,229,255,.06);
+  border:1.5px solid rgba(0,229,255,.3);
+  color:rgba(245,240,232,.9); font-size:14px;
+  border-radius:6px; cursor:pointer; text-align:left;
+  transition:all .2s;
+  font-family:Georgia, "Noto Serif SC", serif;
+}
+.choice-btn:active, .choice-btn.selected {
+  background:rgba(0,229,255,.18);
+  border-color:var(--cyan);
+  color:#fff;
+}
+
+/* ── 抽卡 ── */
+.gacha-stage {
+  width:100%; max-width:340px;
+  display:flex; flex-direction:column; align-items:center;
+  gap:18px;
+}
+.gacha-card-wrap {
+  width:172px; height:248px;
+  perspective:900px;
+  position:relative;
+}
+.gacha-card {
+  position:absolute; inset:0;
+  transform-style:preserve-3d;
+  border-radius:10px;
+  transition:transform .7s cubic-bezier(.2,.8,.2,1);
+  filter:drop-shadow(0 18px 28px rgba(0,0,0,.55));
+}
+.gacha-card.is-drawing {
+  animation:gachaShake 1.05s ease-in-out;
+}
+.gacha-card.is-revealed {
+  transform:rotateY(180deg);
+}
+.gacha-face {
+  position:absolute; inset:0;
+  backface-visibility:hidden;
+  border-radius:10px;
+  overflow:hidden;
+  border:1.5px solid rgba(0,229,255,.38);
+  background:
+    radial-gradient(circle at 50% 26%, rgba(255,213,79,.18), transparent 28%),
+    repeating-linear-gradient(135deg, rgba(255,255,255,.05) 0 2px, transparent 2px 7px),
+    linear-gradient(145deg, #071017, #10172b 48%, #050507);
+}
+.gacha-back::before {
+  content:'';
+  position:absolute; inset:18px;
+  border:1px solid rgba(233,30,140,.55);
+  box-shadow:0 0 18px rgba(233,30,140,.32);
+}
+.gacha-back::after {
+  content:'凶手牌';
+  position:absolute; inset:0;
+  display:flex; align-items:center; justify-content:center;
+  color:rgba(245,240,232,.9);
+  font-family:Georgia, "Noto Serif SC", serif;
+  font-size:20px; letter-spacing:6px; writing-mode:vertical-rl;
+  text-shadow:0 0 16px rgba(0,229,255,.7);
+}
+.gacha-front {
+  transform:rotateY(180deg);
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  padding:16px 14px;
+  text-align:center;
+  background:
+    linear-gradient(180deg, rgba(5,5,7,.08) 0%, rgba(5,5,7,.22) 42%, rgba(5,5,7,.78) 100%),
+    url('dist/assets/bg3_2_v1.png') center/cover no-repeat;
+}
+.gacha-front::before {
+  content:'';
+  position:absolute; inset:-45%;
+  background:conic-gradient(from 90deg, transparent, rgba(255,255,255,.2), transparent 28%);
+  animation:gachaSweep 1.2s ease-out both;
+  pointer-events:none;
+}
+.gacha-label {
+  position:relative;
+  z-index:1;
+  font-size:20px; font-weight:800; letter-spacing:4px;
+  margin-bottom:8px;
+  font-family:Georgia, "Noto Serif SC", serif;
+  text-shadow:0 2px 10px rgba(0,0,0,.9);
+}
+.gacha-text {
+  position:relative;
+  z-index:1;
+  font-size:11px; line-height:1.55;
+  color:rgba(245,240,232,.86);
+  text-shadow:0 2px 8px rgba(0,0,0,.9);
+}
+.gacha-card-image {
+  display:none;
+}
+.gacha-result-copy {
+  display:none;
+  width:100%;
+  max-width:320px;
+  padding:12px 14px;
+  border-left:2px solid rgba(0,229,255,.65);
+  background:rgba(7,16,23,.82);
+  color:rgba(245,240,232,.92);
+  font-size:14px;
+  line-height:1.7;
+  text-align:left;
+  font-family:Georgia, "Noto Serif SC", serif;
+}
+.gacha-result-copy.show {
+  display:block;
+  animation:gachaCopyIn .35s ease both;
+}
+.gacha-card.rarity-good .gacha-front { border-color:#ffd54f; box-shadow:0 0 24px rgba(255,213,79,.42); }
+.gacha-card.rarity-good .gacha-label { color:#ffd54f; }
+.gacha-card.rarity-normal .gacha-front { border-color:rgba(245,240,232,.55); box-shadow:0 0 20px rgba(0,229,255,.18); }
+.gacha-card.rarity-normal .gacha-label { color:#d7dee8; }
+.gacha-card.rarity-bad .gacha-front { border-color:#ff5252; box-shadow:0 0 24px rgba(255,82,82,.38); }
+.gacha-card.rarity-bad .gacha-label { color:#ff6b6b; }
+.gacha-card.rarity-hidden .gacha-front { border-color:#e91e8c; box-shadow:0 0 30px rgba(233,30,140,.5), 0 0 18px rgba(0,229,255,.38); }
+.gacha-card.rarity-hidden .gacha-label { color:#e91e8c; text-shadow:0 0 14px rgba(0,229,255,.85); }
+.gacha-status {
+  min-height:20px;
+  color:rgba(245,240,232,.55);
+  font-size:12px; letter-spacing:2px;
+  text-align:center;
+}
+.ending-cover {
+  width:118px; height:118px;
+  object-fit:cover;
+  display:block;
+  margin:0 auto 14px;
+  border:1.5px solid rgba(245,240,232,.9);
+  box-shadow:0 0 0 3px rgba(255,255,255,.08), 0 14px 28px rgba(0,0,0,.42), 0 0 24px rgba(0,229,255,.18);
+  background:#050507;
+}
+.ending-game-title {
+  font-size:12px;
+  color:var(--cyan);
+  letter-spacing:2.5px;
+  margin-bottom:14px;
+}
+.choice-btn.gacha-primary {
+  text-align:center;
+  border-color:rgba(233,30,140,.5);
+  background:rgba(233,30,140,.08);
+}
+.choice-btn.gacha-primary.is-locked {
+  opacity:.45;
+  pointer-events:none;
+}
+@keyframes gachaShake {
+  0%,100% { transform:translateY(0) rotateZ(0); }
+  18% { transform:translateY(-8px) rotateZ(-2deg); }
+  38% { transform:translateY(6px) rotateZ(2deg); }
+  58% { transform:translateY(-5px) rotateZ(-1deg); }
+  78% { transform:translateY(3px) rotateZ(1deg); }
+}
+@keyframes gachaSweep {
+  from { transform:rotate(0deg); opacity:0; }
+  35% { opacity:1; }
+  to { transform:rotate(160deg); opacity:0; }
+}
+@keyframes gachaCopyIn {
+  from { opacity:0; transform:translateY(8px); }
+  to { opacity:1; transform:translateY(0); }
+}
+.ending-history {
+  margin-top:22px;
+  max-height:260px;
+  overflow-y:auto;
+  text-align:left;
+  border-top:1px solid rgba(0,229,255,.24);
+  padding-top:14px;
+}
+.ending-history-title {
+  color:var(--cyan);
+  font-size:11px;
+  letter-spacing:3px;
+  margin-bottom:10px;
+  text-align:center;
+}
+.ending-history-empty {
+  color:rgba(245,240,232,.45);
+  font-size:12px;
+  text-align:center;
+  line-height:1.7;
+}
+.ending-record {
+  padding:10px 0;
+  border-bottom:1px solid rgba(255,255,255,.08);
+}
+.ending-record-head {
+  display:flex;
+  align-items:center;
+  gap:8px;
+  margin-bottom:6px;
+}
+.ending-record-index {
+  color:rgba(255,213,79,.88);
+  font-size:12px;
+  font-family:Georgia, "Noto Serif SC", serif;
+}
+.ending-record-type {
+  border:1px solid rgba(0,229,255,.45);
+  color:rgba(0,229,255,.8);
+  font-size:10px;
+  padding:2px 6px;
+  border-radius:3px;
+}
+.ending-record-score {
+  margin-left:auto;
+  color:rgba(255,213,79,.88);
+  font-size:11px;
+}
+.ending-record-question {
+  color:rgba(245,240,232,.55);
+  font-size:11px;
+  line-height:1.5;
+  margin-bottom:4px;
+}
+.ending-record-choice {
+  color:rgba(245,240,232,.92);
+  font-size:13px;
+  line-height:1.55;
+}
+
+/* ── 档案卡 ── */
+#card-panel {
+  position:absolute; inset:0; z-index:40;
+  background:rgba(0,0,0,.92); backdrop-filter:blur(8px);
+  display:none; align-items:center; justify-content:center;
+  padding:20px 20px max(20px,env(safe-area-inset-bottom,20px));
+  overflow-y:auto;
+}
+#card-panel.show { display:flex; }
+#card-inner {
+  background:var(--navy);
+  border:2px solid var(--gold);
+  border-radius:10px; padding:20px;
+  max-width:360px; width:100%;
+  max-height:calc(var(--app-height, 100vh) - 40px - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px));
+  overflow-y:auto;
+}
+#card-title {
+  font-size:16px; font-weight:900; color:var(--gold);
+  text-align:center; margin-bottom:14px; letter-spacing:2px;
+}
+#card-photo {
+  width:100%; height:160px; background:rgba(255,255,255,.06);
+  border-radius:6px; margin-bottom:12px;
+  display:flex; align-items:center; justify-content:center;
+  font-size:10px; color:rgba(255,255,255,.3); text-align:center; padding:10px;
+}
+#card-text {
+  font-size:13px; line-height:1.7; color:rgba(245,240,232,.85);
+  margin-bottom:12px;
+}
+#card-teaser { font-size:12px; color:var(--gold); font-style:italic; }
+#card-close {
+  margin-top:16px; padding:10px; background:rgba(0,229,255,.15);
+  border:1px solid var(--cyan); color:var(--cyan);
+  text-align:center; border-radius:6px; cursor:pointer; font-size:13px;
+}
+
+/* ── 评论区 ── */
+#comments-panel {
+  position:absolute; inset:0; z-index:40;
+  background:rgba(0,0,0,.9); backdrop-filter:blur(8px);
+  display:none; flex-direction:column;
+  padding:60px 20px max(20px,env(safe-area-inset-bottom,20px));
+  overflow-y:auto;
+}
+#comments-panel.show { display:flex; }
+.comment-item {
+  background:rgba(255,255,255,.05);
+  border-left:3px solid var(--cyan);
+  padding:12px 14px; margin-bottom:12px; border-radius:0 6px 6px 0;
+  animation:slideIn .3s ease;
+}
+.comment-user { font-size:11px; color:var(--cyan); margin-bottom:4px; font-weight:700; }
+.comment-text { font-size:14px; color:rgba(245,240,232,.85); line-height:1.5; }
+@keyframes slideIn { from{opacity:0;transform:translateX(-20px)} to{opacity:1;transform:translateX(0)} }
+#comments-close {
+  margin-top:auto; padding:12px;
+  background:rgba(0,229,255,.1); border:1px solid var(--cyan);
+  color:var(--cyan); text-align:center; border-radius:6px; cursor:pointer;
+}
+
+/* ── Timeline ── */
+#timeline-panel {
+  position:absolute; inset:0; z-index:40;
+  background:rgba(0,0,0,.92); backdrop-filter:blur(8px);
+  display:none; flex-direction:column;
+  align-items:center;
+  padding:60px 20px max(20px,env(safe-area-inset-bottom,20px));
+  overflow-y:auto;
+}
+#timeline-panel.show { display:flex; }
+#timeline-title {
+  font-size:13px; color:var(--cyan); letter-spacing:2px; margin-bottom:32px;
+}
+.tl-item {
+  display:flex; align-items:flex-start; gap:16px;
+  width:100%; max-width:320px; margin-bottom:24px;
+  opacity:0; transform:translateY(16px);
+  transition:all .4s ease;
+}
+.tl-item.visible { opacity:1; transform:translateY(0); }
+.tl-dot {
+  width:10px; height:10px; border-radius:50%;
+  background:var(--cyan); margin-top:5px; flex-shrink:0;
+  box-shadow:0 0 8px var(--cyan);
+}
+.tl-year { font-size:11px; color:var(--gold); font-weight:700; min-width:36px; margin-top:3px; }
+.tl-text { font-size:14px; color:rgba(245,240,232,.9); line-height:1.5; }
+#timeline-next {
+  margin-top:auto; padding:12px 24px;
+  background:rgba(0,229,255,.1); border:1px solid var(--cyan);
+  color:var(--cyan); text-align:center; border-radius:6px; cursor:pointer;
+}
+</style>
+</head>
+<body>
+<div id="viewport">
+<div id="game">
+
+  <!-- 场景层 -->
+  <div id="scene">
+    <img id="scene-img" class="scene-img">
+    <img id="scene-img-next" class="scene-img">
+    <div id="scene-placeholder"></div>
+  </div>
+
+  <!-- HUD -->
+  <div id="hud">
+    <div id="chapter-label">第一章：幕后黑手</div>
+    <div id="score-row">
+      <div id="score-label">理解度</div>
+      <div id="score-bar-wrap"><div id="score-bar-fill"></div></div>
+      <div id="score-num">0</div>
+    </div>
+  </div>
+
+  <!-- 浮层插图 -->
+  <div id="panel-layer"></div>
+
+  <!-- 对话框（GameT0 风格） -->
+  <div id="dialog-box" class="hidden">
+    <div id="dialog-avatar">
+      <div id="dialog-avatar-placeholder">头像占位</div>
+    </div>
+    <div id="dialog-right">
+      <div id="speaker"></div>
+      <div id="dialog-text"></div>
+    </div>
+    <div id="tap-hint">点击继续</div>
+  </div>
+
+  <!-- 全屏居中文字 -->
+  <div id="fullscreen-text-panel">
+    <div id="fullscreen-text-content"></div>
+  </div>
+
+  <!-- 章节转场黑幕 -->
+  <div id="transition-panel">
+    <img id="transition-cover" alt="">
+    <div id="transition-text"></div>
+  </div>
+
+  <!-- 选择题 -->
+  <div id="choice-panel">
+    <div id="choice-question"></div>
+    <div id="choice-list"></div>
+  </div>
+
+  <!-- 档案卡 -->
+  <div id="card-panel">
+    <div id="card-inner">
+      <div id="card-title"></div>
+      <div id="card-photo"></div>
+      <div id="card-text"></div>
+      <div id="card-teaser"></div>
+      <div id="card-close">继续 →</div>
+    </div>
+  </div>
+
+  <!-- 评论区 -->
+  <div id="comments-panel">
+    <div id="comments-list"></div>
+    <div id="comments-close">继续 →</div>
+  </div>
+
+  <!-- 时间线 -->
+  <div id="timeline-panel">
+    <div id="timeline-title">▸ 点击逐步展开</div>
+    <div id="timeline-list"></div>
+    <div id="timeline-next">继续 →</div>
+  </div>
+
+</div><!-- #game -->
+</div><!-- #viewport -->
+<script>
+// ── 剧本数据（第一章 + 第二章） ──
+const SCRIPT = [
+  // ══ 第一章 ══
+  { type:'scene', bg:'dist/assets/bg1_1.png', chapter:'第一章：幕后黑手', _hint:'bg1_1｜站立准备',
+    audio:{
+      stadium:{ src:'Audio/stadium.mp3', volume:.78, loop:true, fade:900 },
+      mystery:{ stop:true, fade:500 }
+    } },
+  { type:'scene', bg:'dist/assets/bg1_1_v5.png', chapter:'第一章：幕后黑手', _hint:'bg1_2｜小碎步准备起脚' },
+  { type:'scene', bg:'dist/assets/bg1_1_v7.png', chapter:'第一章：幕后黑手', _hint:'bg1_3｜射门' },
+  { type:'scene', bg:'dist/assets/bg1_5.png', chapter:'第一章：幕后黑手',
+    _hint:'bg1_4｜极近景，手指按下遥控器暂停键，电视反光里有小李飞蛋的半张脸', ambStop:true, ambFadeDuration:10 },
+
+  { type:'scene', bg:'dist/assets/bg1_1.png', chapter:'第一章：幕后黑手',
+    _hint:'bg1_5｜固定中景，小李飞蛋站在画面左侧三分线，转身看向镜头，背景是球场通道虚影' },
+  { type:'dialog', speaker:'小李飞蛋', text:'我叫小李飞蛋。',
+    audio:{
+      stadium:{ volume:.22, fade:1200 },
+      mystery:{ src:'Audio/musicinmedia-enchanted-mystery-232411.mp3', volume:.52, loop:true, fade:1400 }
+    } },
+
+  { type:'scene', bg:'', chapter:'第一章：幕后黑手',
+    _hint:'bg1_6｜小李同一站位，背景切成混乱评论区，弹幕气泡满屏，文字全部模糊不可读' },
+  { type:'dialog', speaker:'小李飞蛋', text:'职业很难解释。' },
+
+  { type:'scene', bg:'dist/assets/bg1_1.png', chapter:'第一章：幕后黑手',
+    _hint:'bg1_7｜小李同一站位，背景切成档案柜和旧报纸，抽屉半开，票根、球员剪影、红线线索' },
+  { type:'dialog', speaker:'小李飞蛋', text:'我专查球迷吵不明白的案子。' },
+
+  { type:'scene', bg:'dist/assets/bg1_1.png', chapter:'第一章：幕后黑手',
+    _hint:'bg1_8｜小李同一站位，背景切成侦探办公室；玩具感无标识奖杯陈列，大耳朵杯反光里出现基莲倒影' },
+  { type:'dialog', speaker:'小李飞蛋', text:'比如：一个人为什么总是错过冠军。' },
+
+  { type:'scene', bg:'dist/assets/bg1_1.png', chapter:'第一章：幕后黑手',
+    _hint:'bg1_10｜基莲坐在办公桌对面，帽檐低，桌上有黑色委托书，标题"奖杯失踪案"' },
+  { type:'dialog', speaker:'基莲', text:'有人陷害我。' },
+  { type:'dialog', speaker:'基莲', text:'我每次更接近梦想，奖杯就离我而去。' },
+  { type:'dialog', speaker:'基莲', text:'帮我找出凶手。' },
+
+  { type:'scene', bg:'dist/assets/bg1_1.png', chapter:'第一章：幕后黑手',
+    _hint:'bg1_11｜基莲身后整面线索墙，海报、照片、点球表、奖杯剪影、红线交叉' },
+  { type:'scene', bg:'dist/assets/bg1_12.png', chapter:'第一章：幕后黑手',
+    _hint:'bg1_12｜线索墙zoom 1："深蓝"线索，深蓝色旧队剪影，两座大耳朵杯冷光照亮' },
+  { type:'dialog', speaker:'基莲', text:'ta陷害我。我离开俱乐部，ta就会操控球队夺冠。' },
+
+  { type:'scene', bg:'dist/assets/bg1_13.png', chapter:'第一章：幕后黑手',
+    _hint:'bg1_13｜线索墙zoom 2："破旧白色王座"，掉漆白色王座，座面空着，奖杯影子暗掉' },
+  { type:'dialog', speaker:'基莲', text:'ta让我坐上梦里的王座，却把奖杯拿走。' },
+
+  { type:'scene', bg:'dist/assets/bg1_14.png', chapter:'第一章：幕后黑手',
+    _hint:'bg1_14｜线索墙zoom 3："金色选票"，未填写姓名的金色选票，笔尖停在空白处' },
+  { type:'dialog', speaker:'基莲', text:'ta还偷走评委的眼睛。' },
+
+  { type:'scene', bg:'dist/assets/bg1_15.png', chapter:'第一章：幕后黑手',
+    _hint:'bg1_15｜线索墙zoom 4："2026点球表"，关键一罚被红线圈住，旁边贴暂停画面截图' },
+  { type:'dialog', speaker:'基莲', text:'看，他就在那里，他在指挥！' },
+
+  { type:'choice',
+    question:'接下这个案子前，我最该相信什么？',
+    options:[
+      { text:'一定有人动了手脚', score:5 },
+      { text:'这可能只是巧合', score:10 },
+      { text:'他需要的不是凶手，是答案', score:20 }
+    ]
+  },
+
+  { type:'scene', bg:'dist/assets/bg1_1.png', chapter:'第一章：幕后黑手',
+    _hint:'bg1_16｜线索墙角落，泛黄球探报告被红线压住，唯一可读文字："摩纳哥 / 少年档案 / 第一站"' },
+
+  { type:'narrate', text:'**如果没有凶手呢？**', fullscreen:true },
+
+  // ══ 第二章 ══
+  { type:'scene', bg:'dist/assets/bg2_1.png', chapter:'第二章：第一个嫌疑人',
+    _hint:'bg2_1｜狭长档案走廊，侧光打在地板上，尽头是一扇门，门缝透出白色强光' },
+  { type:'scene', bg:'dist/assets/bg2_2.png', chapter:'第二章：第一个嫌疑人',
+    _hint:'bg2_2｜镜头穿过门，巨大白色球场，草皮纹理清晰，灯光刺眼，无观众，少年背影在禁区边缘小跑' },
+  { type:'scene', bg:'dist/assets/bg2_3.png', chapter:'第二章：第一个嫌疑人',
+    _hint:'bg2_3｜低角度近景，少年球鞋踏过白线，影子极长，脚踝有泥点' },
+
+  { type:'dialog', speaker:'摩纳哥的基莲', text:'我只是想踢球，享受比赛。' },
+  { type:'dialog', speaker:'摩纳哥的基莲', text:'其余的事情，自然会来。' },
+  { type:'narrate', fullscreen:true, text:'他说这话时才18岁。' },
+  { type:'narrate', fullscreen:true, text:'他还不知道，"其余的事情"会来得多复杂。' },
+  { type:'dialog', speaker:'摩纳哥的基莲', text:'但我要他们知道，是我赢的。' },
+
+  { type:'scene', bg:'dist/assets/bg2_4.png', chapter:'第二章：第一个嫌疑人',
+    _hint:'bg2_4｜球员通道，两件无徽章球衣并排，左边深蓝，右边纯白；深蓝那件投影更长' },
+  { type:'panel', src:'', pos:'br',
+    _hint:'p2_1｜白色球衣领口吊牌背面，手写字："梦想"' },
+  { type:'narrate', fullscreen:true, text:'巴黎。马德里。' },
+  { type:'narrate', fullscreen:true, text:'两条路，都是他走过的。' },
+
+  { type:'scene', bg:'dist/assets/bg2_5.png', chapter:'第二章：第一个嫌疑人',
+    _hint:'bg2_5｜小李飞蛋站在两件球衣中间，仰头，背对用户；深蓝光和白光分别从两侧打来' },
+  { type:'panel', src:'', pos:'bl',
+    _hint:'p2_2｜空白金球选票平放地板，四角压小钉，姓名栏空着，边缘被侧光镀金' },
+  { type:'narrate', fullscreen:true, text:'他想要的不只是冠军。' },
+  { type:'narrate', fullscreen:true, text:'他想要冠军上有他的名字。' },
+
+  { type:'choice',
+    question:'第一轮调查结束。凶手藏在哪一层？',
+    options:[
+      { text:'他离开巴黎，巴黎就夺冠——时机问题', score:5 },
+      { text:'马德里给了位置，但没给体系', score:15 },
+      { text:'他从少年时就想要的，不只是冠军', score:25 }
+    ]
+  },
+
+  // ══ 第三章 ══
+  { type:'scene', bg:'', chapter:'第三章：他让镜子裂开',
+    _hint:'bg3_1｜巨大镜厅，每面镜子是不同年份的欧冠夜晚，失利姿势清晰' },
+  { type:'scene', bg:'', chapter:'第三章：他让镜子裂开',
+    _hint:'bg3_2｜镜面细密裂纹，巴黎的基莲手掌贴着玻璃' },
+
+  { type:'dialog', speaker:'皇马的基莲', text:'他们说我不够。' },
+  { type:'dialog', speaker:'皇马的基莲', text:'可我已经给了全部。' },
+  { type:'dialog', speaker:'皇马的基莲', text:'我需要在能赢欧冠的地方踢球。' },
+  { type:'narrate', fullscreen:true, text:'他说这话时，已经在巴黎待了五年。' },
+  { type:'narrate', fullscreen:true, text:'裂纹绕开他的脸。' },
+  { type:'narrate', fullscreen:true, text:'扎进了队友的影子里。' },
+
+  { type:'comments', posts:[
+    { user:'看台A区', text:'他这么强，为什么还拿不到？' },
+    { user:'深夜球评', text:'球队不能只有一个答案。' },
+    { user:'匿名评委', text:'金球需要故事，也需要奖杯。' }
+  ]},
+
+  { type:'scene', bg:'', chapter:'第三章：他让镜子裂开',
+    _hint:'bg3_3｜白色战术板，所有箭头指向同一个圆点，圆点只有一个问号' },
+  { type:'panel', src:'', pos:'br',
+    _hint:'p3_1｜圆点处问号被红笔圈了两遍，旁边批注"谁来分担？"' },
+  { type:'narrate', fullscreen:true, text:'一个人扛下所有，其他人扛什么？' },
+  { type:'narrate', fullscreen:true, text:'什么都不用扛。' },
+  { type:'dialog', speaker:'基莲', text:'所以凶手是巴黎？' },
+  { type:'narrate', fullscreen:true, text:'我没有回答。' },
+  { type:'narrate', fullscreen:true, text:'镜子背面还有他的手印。' },
+
+  { type:'choice',
+    question:'巴黎多年无冠，案件指向哪里？',
+    options:[
+      { text:'队友不够强', score:5 },
+      { text:'管理和体系一直摇摆', score:15 },
+      { text:'巨星和体系互相需要，也互相吞噬', score:25 }
+    ]
+  },
+  { type:'card',
+    title:'巴黎时期欧冠档案',
+    photo:'',
+    _photoHint:'巴黎欧冠历程真实照片',
+    text:'2017年至2024年，基莲的现实原型效力巴黎期间，球队多次冲击欧冠，最好成绩包括2020年亚军、2021年四强、2024年四强，但未能夺冠。这个事实容易被写成"魔咒"，但更适合作为体系问题的入口。',
+    teaser:'镜厅尽头，出现了一座破旧白色王座。'
+  },
+
+  // ══ 第四章 ══
+  { type:'scene', bg:'', chapter:'第四章：指纹',
+    _hint:'bg4_1｜空旷殿堂，掉漆白色王座，墙上四张剪报剪影全部灰暗' },
+  { type:'timeline', events:[
+    { year:'2024', text:'马德里夺冠' },
+    { year:'2024', text:'基莲加盟马德里' },
+    { year:'2025', text:'巴黎夺冠' },
+    { year:'2026', text:'巴黎卫冕' }
+  ]},
+  { type:'dialog', speaker:'基莲', text:'我来马德里，是为了赢得一切。' },
+  { type:'dialog', speaker:'基莲', text:'特别是欧冠。' },
+  { type:'dialog', speaker:'基莲', text:'你看时间线。' },
+  { type:'dialog', speaker:'基莲', text:'不是巧合。' },
+  { type:'dialog', speaker:'基莲', text:'我一走，他们就加冕。' },
+
+  { type:'scene', bg:'', chapter:'第四章：指纹',
+    _hint:'bg4_2｜王座前数据面板，进球栏很亮，团队奖杯栏几乎全暗' },
+  { type:'narrate', fullscreen:true, text:'进球，进球，进球。' },
+  { type:'narrate', fullscreen:true, text:'另一栏很暗。' },
+
+  { type:'gacha',
+    question:'我从王座裂缝里抽出一张"凶手牌"。牌面是谁？',
+    pool:[
+      { weight:20, rarity:'good',   label:'时代',   text:'时代。球王不再单独解决一切，体系开始吞下个人神话。', score:20 },
+      { weight:40, rarity:'normal', label:'金球',   text:'金球奖。它奖励伟大，也诱导人把伟大误读成个人证明。', score:15 },
+      { weight:25, rarity:'bad',    label:'自己',   text:'基莲自己。他不是罪人，但他的执念确实改变了球队的形状。', score:10 },
+      { weight:15, rarity:'hidden', label:'空白牌', text:'没有单一凶手。每张牌都只是指纹，不是判决书。', score:30 }
+    ]
+  },
+
+  { type:'dialog', speaker:'基莲', text:'所以是我？' },
+  { type:'dialog', speaker:'基莲', text:'所以是我？' },
+  { type:'scene', bg:'', chapter:'第四章：指纹',
+    _hint:'bg4_3｜基莲正面特写，背景压暗至近黑，表情难以置信' },
+  { type:'dialog', speaker:'基莲', text:'所以是我。' },
+  { type:'narrate', fullscreen:true, text:'我第一次不想破案。' },
+  { type:'narrate', fullscreen:true, text:'我只想让他慢点看。' },
+
+  { type:'choice',
+    question:'面对基莲的追问，我该怎么说？',
+    options:[
+      { text:'凶手就是你自己', score:5 },
+      { text:'你也是原因之一', score:15 },
+      { text:'你不是凶手，你是困在旧公式里的人', score:25 }
+    ]
+  },
+  { type:'card',
+    title:'马德里与巴黎档案',
+    photo:'',
+    _photoHint:'转会官宣真实照片',
+    text:'2024年，皇马赢得欧冠后不久，官方宣布基莲现实原型加盟。随后巴黎在2025年赢得队史首座欧冠，2026年完成卫冕。这个时间错位，是本剧悬疑主线的事实基础。',
+    teaser:'王座背后，是颁奖后台。'
+  },
+
+  // ══ 第五章 ══
+  { type:'scene', bg:'', chapter:'第五章：没有凶手的报告',
+    _hint:'bg5_1｜颁奖后台走廊，红毯延伸，尽头窄门，门缝没有光' },
+  { type:'scene', bg:'', chapter:'第五章：没有凶手的报告',
+    _hint:'bg5_2｜小房间，巨大镜子，镜子前只有一把空椅子' },
+  { type:'scene', bg:'', chapter:'第五章：没有凶手的报告',
+    _hint:'bg5_3｜镜中三个不同年纪的基莲背对用户，看着镜中的镜子' },
+
+  { type:'dialog', speaker:'摩纳哥的基莲',   text:'我不想只是某个时代最好的球员。' },
+  { type:'dialog', speaker:'摩纳哥的基莲',   text:'我想让人们在50年后还记得我的名字。' },
+  { type:'dialog', speaker:'皇马的基莲',   text:'我必须证明他们错了。' },
+  { type:'dialog', speaker:'马德里的基莲', text:'我到了梦里，为什么还不快乐？' },
+
+  { type:'panel', src:'', pos:'br',
+    _hint:'p5_1｜空白选票平放椅子上，笔搭在姓名栏边缘' },
+  { type:'narrate', fullscreen:true, text:'他没有被奖杯抛弃。' },
+  { type:'narrate', fullscreen:true, text:'他只是一直在追一张需要别人填写的选票。' },
+
+  { type:'dialog', speaker:'基莲', text:'那现在呢？' },
+  { type:'dialog', speaker:'基莲', text:'我该怎么选？' },
+
+  { type:'choice',
+    question:'最后，我把报告写成什么？',
+    options:[
+      { text:'"基莲定律"：他在哪里，哪里无冠', score:0 },
+      { text:'"时代报告"：巨星主义正在退潮', score:20 },
+      { text:'"空白选票"：别把人生交给评委', score:30 }
+    ]
+  },
+
+  { type:'hero', title:'空白选票', image:'' },
+
+  { type:'narrate', fullscreen:true, text:'我放下笔。' },
+  { type:'narrate', fullscreen:true, text:'报告没有凶手。' },
+  { type:'narrate', fullscreen:true, text:'只有一行结论：' },
+  { type:'narrate', fullscreen:true, text:'**奖杯不是离你而去。**' },
+  { type:'narrate', fullscreen:true, text:'**它只是去了更像球队的地方。**' },
+
+  { type:'dialog', speaker:'基莲', text:'好的。' },
+  { type:'dialog', speaker:'基莲', text:'我明白了。' },
+  { type:'dialog', speaker:'基莲', text:'我要去参加世界杯了。' },
+
+  { type:'card',
+    title:'金球与球队档案',
+    photo:'',
+    _photoHint:'金球奖颁奖舞台照片',
+    text:'金球奖评选没有"必须夺欧冠"的硬性规则，但团队冠军往往会塑造评奖叙事。对顶级球员来说，真正困难的不是拥有个人能力，而是在个人野心与球队体系之间找到可持续的位置。',
+    teaser:'案子结束了。比赛还没有。'
+  },
+
+  { type:'ending' }
+];
+
+// ── 引擎 ──
+const isStoryboardPreview = new URLSearchParams(window.location.search).get('preview') === '1';
+let idx = 0, score = 0, previewMode = isStoryboardPreview;
+let choiceHistory = [];
+const MAX_SCORE = 100;
+const PREVIEW_TEXT_NODE_TYPES = new Set(['dialog', 'narrate']);
+const PREVIEW_OVERLAY_NODE_TYPES = new Set(['choice', 'panel', 'card', 'comments', 'timeline', 'gacha', 'hero', 'transition', 'ending']);
+
+// ── 音频系统 ──
+const _amb = { el: null, fadeTimer: null };
+
+function playAmb(src, loop = true) {
+  stopAmb(0);
+  const a = new Audio(src);
+  a.loop = loop;
+  a.volume = 0.6;
+  a.play().catch(() => {});
+  _amb.el = a;
+}
+
+function stopAmb(fadeSec = 0) {
+  clearInterval(_amb.fadeTimer);
+  if (!_amb.el) return;
+  const a = _amb.el;
+  _amb.el = null;
+  if (!fadeSec) { a.pause(); return; }
+  const step = 0.05;
+  const interval = (fadeSec * 1000) / (a.volume / step);
+  _amb.fadeTimer = setInterval(() => {
+    if (a.volume > step) { a.volume = Math.max(0, a.volume - step); }
+    else { a.pause(); clearInterval(_amb.fadeTimer); }
+  }, interval);
+}
+
+// 人物头像映射（无图片时显示占位文字）
+const AVATARS = {
+  '小李飞蛋': 'dist/assets/avatar_li.png',
+  '基莲':     'avatar_xiaoba_v3.png',
+  '年轻的基莲': 'dist/assets/avatar_monaco.png',
+  '摩纳哥的基莲': 'dist/assets/avatar_monaco.png',
+  '巴黎的基莲': 'dist/assets/avatar_paris.png',
+  '皇马的基莲': 'dist/assets/avatar_madrid.png',
+  '马德里的基莲': 'dist/assets/avatar_madrid.png',
+};
+
+function resolveAvatar(speaker) {
+  const chapter = $chapter?.textContent || '';
+  if ((speaker || '').includes('基莲')) {
+    if (chapter.includes('第三章')) return 'dist/assets/avatar_xiaoba_v2.png';
+    if (chapter.includes('第四章')) return 'dist/assets/avatar_madrid_v1.png';
+    if (chapter.includes('第五章')) return 'dist/assets/avatar_xiaoba.png';
+  }
+  return AVATARS[speaker] || '';
+}
+
+const $dialogAvatar      = document.getElementById('dialog-avatar');
+const $dialogAvatarPlaceholder = document.getElementById('dialog-avatar-placeholder');
+const $scene        = document.getElementById('scene');
+const $sceneImg     = document.getElementById('scene-img');
+const $sceneImgNext = document.getElementById('scene-img-next');
+const $placeholder  = document.getElementById('scene-placeholder');
+const $chapter      = document.getElementById('chapter-label');
+const $scoreFill    = document.getElementById('score-bar-fill');
+const $scoreNum     = document.getElementById('score-num');
+const $dialogBox    = document.getElementById('dialog-box');
+const $speaker      = document.getElementById('speaker');
+const $dialogText   = document.getElementById('dialog-text');
+const $panelLayer   = document.getElementById('panel-layer');
+const $choicePanel  = document.getElementById('choice-panel');
+const $choiceQ      = document.getElementById('choice-question');
+const $choiceList   = document.getElementById('choice-list');
+const $cardPanel    = document.getElementById('card-panel');
+const $cardTitle    = document.getElementById('card-title');
+const $cardPhoto    = document.getElementById('card-photo');
+const $cardText     = document.getElementById('card-text');
+const $cardTeaser   = document.getElementById('card-teaser');
+const $cardClose    = document.getElementById('card-close');
+const $commentsPanel= document.getElementById('comments-panel');
+const $commentsList = document.getElementById('comments-list');
+const $commentsClose= document.getElementById('comments-close');
+const $tlPanel      = document.getElementById('timeline-panel');
+const $tlList       = document.getElementById('timeline-list');
+const $tlNext       = document.getElementById('timeline-next');
+const $transitionPanel = document.getElementById('transition-panel');
+const $transitionText  = document.getElementById('transition-text');
+const $transitionCover = document.getElementById('transition-cover');
+
+let typing = false, typingTimer = null;
+let activeSceneImg = $sceneImg;
+let idleSceneImg = $sceneImgNext;
+let sceneFadeTimer = null;
+let transitionLocked = false;
+let transitionTimer = null;
+let suppressSceneAutoAdvanceOnce = false;
+const audioTracks = {};
+const preloadedAssets = new Set();
+const preloadQueues = { image: [], audio: [] };
+const preloadActive = { image: 0, audio: 0 };
+const PRELOAD_LIMITS = { image: 2, audio: 1 };
+let previewFramesCache = [];
+let previewFrameCursor = -1;
+
+function isPreviewOverlayNode(node) {
+  return node && (PREVIEW_TEXT_NODE_TYPES.has(node.type) || PREVIEW_OVERLAY_NODE_TYPES.has(node.type));
+}
+
+function buildPreviewFrames(script) {
+  const frames = [];
+  let currentSceneIdx = null;
+
+  for (let i = 0; i < script.length; i++) {
+    const node = script[i];
+
+    if (node.type === 'scene') {
+      currentSceneIdx = i;
+      const next = script[i + 1];
+      if (next && PREVIEW_TEXT_NODE_TYPES.has(next.type)) {
+        frames.push({
+          frameIdx: frames.length,
+          sceneIdx: i,
+          overlayIdx: i + 1
+        });
+        i++;
+      } else {
+        frames.push({
+          frameIdx: frames.length,
+          sceneIdx: i,
+          overlayIdx: null
+        });
+      }
+      continue;
+    }
+
+    if (isPreviewOverlayNode(node)) {
+      frames.push({
+        frameIdx: frames.length,
+        sceneIdx: currentSceneIdx,
+        overlayIdx: i
+      });
+    }
+  }
+
+  return frames;
+}
+
+function rebuildPreviewFrames() {
+  previewFramesCache = buildPreviewFrames(SCRIPT);
+  if (previewFrameCursor >= previewFramesCache.length) {
+    previewFrameCursor = previewFramesCache.length - 1;
+  }
+}
+
+function syncStoryFrames(frames) {
+  if (!Array.isArray(frames) || !frames.length) return;
+  SCRIPT.splice(0, SCRIPT.length, ...frames);
+  rebuildPreviewFrames();
+}
+
+function isPreloadableSrc(src) {
+  return !!src && typeof src === 'string' && !src.startsWith('data:') && !src.startsWith('blob:');
+}
+
+function queuePreload(kind, src, loader) {
+  if (!isPreloadableSrc(src) || preloadedAssets.has(src)) return;
+  if (preloadQueues[kind].some(item => item.src === src)) return;
+  preloadQueues[kind].push({ src, loader });
+  pumpPreloadQueue(kind);
+}
+
+function pumpPreloadQueue(kind) {
+  while (preloadActive[kind] < PRELOAD_LIMITS[kind] && preloadQueues[kind].length) {
+    const item = preloadQueues[kind].shift();
+    preloadActive[kind]++;
+    item.loader(item.src)
+      .catch(() => {})
+      .finally(() => {
+        preloadedAssets.add(item.src);
+        preloadActive[kind]--;
+        pumpPreloadQueue(kind);
+      });
+  }
+}
+
+function preloadImage(src) {
+  queuePreload('image', src, imageSrc => new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = resolve;
+    img.onerror = reject;
+    img.src = imageSrc;
+  }));
+}
+
+function preloadAudio(src) {
+  queuePreload('audio', src, audioSrc => new Promise(resolve => {
+    const audio = new Audio(audioSrc);
+    audio.preload = 'auto';
+    audio.addEventListener('canplaythrough', resolve, { once:true });
+    audio.addEventListener('loadeddata', resolve, { once:true });
+    audio.addEventListener('error', resolve, { once:true });
+    audio.load();
+    window.setTimeout(resolve, 2500);
+  }));
+}
+
+function preloadNodeAssets(node, options = {}) {
+  if (!node) return;
+  if (node.bg) preloadImage(withPreviewCache(node.bg));
+  if (node.cover) preloadImage(withPreviewCache(node.cover));
+  if (node.image) preloadImage(withPreviewCache(node.image));
+  if (node.photo) preloadImage(withPreviewCache(node.photo));
+  if (node.src && /\.(png|jpe?g|webp|gif|svg)(\?|$)/i.test(node.src)) preloadImage(withPreviewCache(node.src));
+
+  if (node.audio) {
+    Object.entries(node.audio).forEach(([id, cue]) => {
+      if (!cue?.src) return;
+      const oneShot = cue.loop === false || id.toLowerCase().includes('sfx');
+      if (!oneShot || options.includeSfx) preloadAudio(cue.src);
+    });
+  }
+}
+
+function preloadFrameAssets(frame, options = {}) {
+  if (!frame) return;
+  const sceneNode = Number.isInteger(frame.sceneIdx) ? SCRIPT[frame.sceneIdx] : null;
+  const overlayNode = Number.isInteger(frame.overlayIdx) ? SCRIPT[frame.overlayIdx] : null;
+  preloadNodeAssets(sceneNode, options);
+  preloadNodeAssets(overlayNode, options);
+}
+
+function preloadUpcomingFrames(frameIdx, count = 3) {
+  if (!previewFramesCache.length) rebuildPreviewFrames();
+  for (let i = frameIdx + 1; i <= frameIdx + count && i < previewFramesCache.length; i++) {
+    preloadFrameAssets(previewFramesCache[i], { includeSfx: i <= frameIdx + 1 });
+  }
+}
+
+function preloadNextChapterAssets(transitionNode) {
+  const nextChapter = transitionNode?.chapter || '';
+  if (!nextChapter) return;
+  let loadedImages = 0;
+  for (const frame of previewFramesCache) {
+    const sceneNode = Number.isInteger(frame.sceneIdx) ? SCRIPT[frame.sceneIdx] : null;
+    const overlayNode = Number.isInteger(frame.overlayIdx) ? SCRIPT[frame.overlayIdx] : null;
+    const frameChapter = overlayNode?.chapter || sceneNode?.chapter || '';
+    if (frameChapter !== nextChapter) continue;
+    if (loadedImages < 5) {
+      preloadNodeAssets(sceneNode);
+      preloadNodeAssets(overlayNode);
+      if (sceneNode?.bg || overlayNode?.bg || overlayNode?.cover) loadedImages++;
+    }
+    const audioNode = [sceneNode, overlayNode].find(node =>
+      node?.audio && Object.values(node.audio).some(cue => cue?.src && cue.loop !== false)
+    );
+    if (audioNode) preloadNodeAssets(audioNode);
+    if (loadedImages >= 5 && audioNode) break;
+  }
+}
+
+function resetScore() {
+  score = 0;
+  choiceHistory = [];
+  $scoreFill.style.width = '0%';
+  $scoreNum.textContent = '0';
+}
+
+function stopAllAudioTracks() {
+  Object.keys(audioTracks).forEach(id => {
+    const track = audioTracks[id];
+    if (track?.audio) {
+      track.stopping = true;
+      track.audio.pause();
+      track.audio.currentTime = 0;
+    }
+    delete audioTracks[id];
+  });
+}
+
+function isContinuousAudioCue(id, cue) {
+  if (!cue) return false;
+  if (cue.loop === false) return false;
+  if (String(id || '').toLowerCase().includes('sfx')) return false;
+  return true;
+}
+
+function getNodeChapterAt(rawIndex) {
+  let chapter = '';
+  for (let i = 0; i <= rawIndex; i++) {
+    if (SCRIPT[i]?.chapter) chapter = SCRIPT[i].chapter;
+  }
+  return chapter;
+}
+
+function getChapterStartIndex(rawIndex) {
+  const targetChapter = getNodeChapterAt(rawIndex);
+  if (!targetChapter) return 0;
+
+  let currentChapter = '';
+  let startIndex = 0;
+  for (let i = 0; i <= rawIndex; i++) {
+    const chapter = SCRIPT[i]?.chapter;
+    if (chapter && chapter !== currentChapter) {
+      currentChapter = chapter;
+      if (chapter === targetChapter) startIndex = i;
+    }
+  }
+  return startIndex;
+}
+
+function collectContinuousAudioStateUntil(rawIndex, startIndex = 0) {
+  const audio = {};
+  const end = Math.max(0, Math.min(rawIndex, SCRIPT.length - 1));
+  const start = Math.max(0, Math.min(startIndex, end));
+  for (let i = start; i <= end; i++) {
+    const node = SCRIPT[i];
+    if (!node?.audio) continue;
+    Object.entries(node.audio).forEach(([id, cue]) => {
+      if (!isContinuousAudioCue(id, cue)) return;
+      if (cue.stop || cue.volume === 0) {
+        delete audio[id];
+        return;
+      }
+      if (cue.src) {
+        audio[id] = { ...cue, fade: 0 };
+      } else if (audio[id] && (cue.volume !== undefined || cue.fade !== undefined)) {
+        audio[id] = { ...audio[id], ...cue, fade: 0 };
+      }
+    });
+  }
+  return audio;
+}
+
+function syncPreviewAudioToRawIndex(rawIndex, options = {}) {
+  stopAllAudioTracks();
+  const startIndex = options.chapterScoped ? getChapterStartIndex(rawIndex) : 0;
+  const audio = collectContinuousAudioStateUntil(rawIndex, startIndex);
+  if (Object.keys(audio).length) applyAudioCues({ audio });
+}
+
+function syncPreviewAudioToFrame(frame) {
+  const sceneIdx = Number.isInteger(frame?.sceneIdx) ? frame.sceneIdx : -1;
+  const overlayIdx = Number.isInteger(frame?.overlayIdx) ? frame.overlayIdx : -1;
+  syncPreviewAudioToRawIndex(Math.max(sceneIdx, overlayIdx), { chapterScoped: true });
+}
+
+function jumpToFrame(frameIdx) {
+  if (!SCRIPT.length) return;
+  previewMode = true;
+  idx = Math.max(0, Math.min(frameIdx, SCRIPT.length - 1));
+  resetScore();
+  resetOverlays();
+  syncPreviewAudioToRawIndex(idx, { chapterScoped: true });
+  showNode(SCRIPT[idx++]);
+}
+
+function findPreviewFrameIndex(previewFrame) {
+  if (!previewFramesCache.length) rebuildPreviewFrames();
+  if (Number.isInteger(previewFrame.frameIdx) && previewFramesCache[previewFrame.frameIdx]) {
+    return previewFrame.frameIdx;
+  }
+  const sceneIdx = Number.isInteger(previewFrame.sceneIdx) ? previewFrame.sceneIdx : null;
+  const overlayIdx = Number.isInteger(previewFrame.overlayIdx) ? previewFrame.overlayIdx : null;
+  const found = previewFramesCache.findIndex(frame =>
+    frame.sceneIdx === sceneIdx && frame.overlayIdx === overlayIdx
+  );
+  return found >= 0 ? found : 0;
+}
+
+function showPreviewFrame(previewFrame, shouldResetScore = true) {
+  if (!SCRIPT.length || !previewFrame) return;
+  previewMode = true;
+  if (shouldResetScore) resetScore();
+  resetOverlays();
+
+  const resolvedIdx = findPreviewFrameIndex(previewFrame);
+  const resolvedFrame = previewFramesCache[resolvedIdx] || previewFrame;
+  previewFrameCursor = resolvedIdx;
+
+  const sceneIdx = Number.isInteger(resolvedFrame.sceneIdx) ? resolvedFrame.sceneIdx : null;
+  const overlayIdx = Number.isInteger(resolvedFrame.overlayIdx) ? resolvedFrame.overlayIdx : null;
+  const sceneNode = sceneIdx !== null ? SCRIPT[sceneIdx] : null;
+  const overlayNode = overlayIdx !== null ? SCRIPT[overlayIdx] : null;
+
+  if (shouldResetScore) syncPreviewAudioToFrame(resolvedFrame);
+
+  if (sceneNode && sceneNode.type === 'scene') {
+    idx = sceneIdx + 1;
+    showNode(sceneNode);
+  }
+  if (overlayNode) {
+    idx = overlayIdx + 1;
+    showNode(overlayNode);
+  } else if (sceneIdx !== null) {
+    idx = sceneIdx + 1;
+  }
+
+  if (isStoryboardPreview && window.parent && window.parent !== window) {
+    window.parent.postMessage({
+      type: 'story:preview-frame',
+      frameIdx: previewFrameCursor,
+      sceneIdx,
+      overlayIdx
+    }, '*');
+  }
+  preloadUpcomingFrames(previewFrameCursor, 3);
+}
+
+function startVisualPlayback() {
+  previewMode = true;
+  rebuildPreviewFrames();
+  previewFrameCursor = -1;
+  idx = 0;
+  resetScore();
+  resetOverlays();
+  stopAllAudioTracks();
+  advancePreviewFrame();
+}
+
+function advancePreviewFrame() {
+  if (!previewFramesCache.length) rebuildPreviewFrames();
+  if (!previewFramesCache.length) return;
+  const nextIdx = previewFrameCursor < 0 ? 0 : previewFrameCursor + 1;
+  if (nextIdx >= previewFramesCache.length) return;
+  showPreviewFrame(previewFramesCache[nextIdx], false);
+}
+
+function continueStory() {
+  if (isStoryboardPreview || previewMode) {
+    advancePreviewFrame();
+  } else {
+    advance();
+  }
+}
+
+function withPreviewCache(src) {
+  if (!isStoryboardPreview || !src || src.startsWith('data:') || src.startsWith('blob:')) {
+    return src;
+  }
+  const sep = src.includes('?') ? '&' : '?';
+  return `${src}${sep}__preview=${Date.now()}`;
+}
+
+function fadeAudio(audio, targetVolume, duration = 800, onDone) {
+  const startVolume = audio.volume;
+  const startTime = performance.now();
+  const delta = targetVolume - startVolume;
+  if (!duration) {
+    audio.volume = targetVolume;
+    if (onDone) onDone();
+    return;
+  }
+
+  function tick(now) {
+    const progress = Math.min(1, (now - startTime) / duration);
+    audio.volume = Math.max(0, Math.min(1, startVolume + delta * progress));
+    if (progress < 1) {
+      requestAnimationFrame(tick);
+    } else if (onDone) {
+      onDone();
+    }
+  }
+  requestAnimationFrame(tick);
+}
+
+function tryPlayAudio(audio) {
+  const playPromise = audio.play();
+  if (playPromise && typeof playPromise.catch === 'function') {
+    playPromise.catch(() => {});
+  }
+}
+
+function retryAudioPlayback() {
+  Object.values(audioTracks).forEach(track => {
+    if (track.audio.paused && !track.stopping) tryPlayAudio(track.audio);
+  });
+}
+
+function applyAudioCues(node) {
+  if (!node.audio) return;
+
+  Object.entries(node.audio).forEach(([id, cue]) => {
+    let track = audioTracks[id];
+
+    if (cue.stop) {
+      if (!track) return;
+      track.stopping = true;
+      fadeAudio(track.audio, 0, cue.fade ?? 600, () => {
+        track.audio.pause();
+        track.audio.currentTime = 0;
+        delete audioTracks[id];
+      });
+      return;
+    }
+
+    const oneShot = cue.loop === false || id.toLowerCase().includes('sfx');
+    if (cue.src && oneShot) {
+      const audio = new Audio(cue.src);
+      audio.loop = false;
+      audio.preload = 'auto';
+      audio.volume = cue.volume ?? 1;
+      tryPlayAudio(audio);
+      return;
+    }
+
+    if (cue.src && !oneShot) {
+      const sameSrcEntry = Object.entries(audioTracks).find(([trackId, existing]) =>
+        trackId !== id && existing?.src === cue.src && !existing.stopping
+      );
+      if (sameSrcEntry) {
+        const [existingId, existingTrack] = sameSrcEntry;
+        if (track && track !== existingTrack) {
+          track.audio.pause();
+          delete audioTracks[id];
+        }
+        track = existingTrack;
+        audioTracks[id] = existingTrack;
+      }
+    }
+
+    if (cue.src && (!track || track.src !== cue.src)) {
+      if (track) {
+        track.audio.pause();
+        delete audioTracks[id];
+      }
+      const audio = new Audio(cue.src);
+      audio.loop = cue.loop !== false;
+      audio.preload = 'auto';
+      audio.volume = 0;
+      track = { audio, src: cue.src, stopping: false };
+      audioTracks[id] = track;
+    }
+
+    if (!track) return;
+    track.stopping = false;
+    if (cue.loop !== undefined) track.audio.loop = cue.loop;
+    tryPlayAudio(track.audio);
+    fadeAudio(track.audio, cue.volume ?? 1, cue.fade ?? 800);
+  });
+}
+
+function setScore(delta) {
+  score = Math.min(MAX_SCORE, score + delta);
+  $scoreFill.style.width = (score / MAX_SCORE * 100) + '%';
+  $scoreNum.textContent = score;
+}
+
+function escapeHtml(value) {
+  return String(value ?? '').replace(/[&<>"']/g, ch => ({
+    '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;'
+  }[ch]));
+}
+
+function recordChoice(entry) {
+  choiceHistory.push({
+    type: entry.type || 'choice',
+    question: entry.question || '',
+    selected: entry.selected || '',
+    text: entry.text || '',
+    score: entry.score || 0
+  });
+}
+
+function renderChoiceHistory() {
+  if (!choiceHistory.length) {
+    return `
+      <div class="ending-history">
+        <div class="ending-history-title">你的调查记录</div>
+        <div class="ending-history-empty">本次预览没有完整选择记录。</div>
+      </div>`;
+  }
+  const items = choiceHistory.map((entry, index) => {
+    const typeLabel = entry.type === 'gacha' ? '凶手牌' : '选择';
+    const selected = entry.type === 'gacha'
+      ? `${entry.selected}${entry.text ? `：${entry.text}` : ''}`
+      : entry.selected;
+    return `
+      <div class="ending-record">
+        <div class="ending-record-head">
+          <span class="ending-record-index">#${String(index + 1).padStart(2, '0')}</span>
+          <span class="ending-record-type">${typeLabel}</span>
+          <span class="ending-record-score">+${escapeHtml(entry.score)}</span>
+        </div>
+        <div class="ending-record-question">${escapeHtml(entry.question)}</div>
+        <div class="ending-record-choice">${escapeHtml(selected)}</div>
+      </div>`;
+  }).join('');
+  return `
+    <div class="ending-history">
+      <div class="ending-history-title">你的调查记录</div>
+      ${items}
+    </div>`;
+}
+
+function clearPanels() {
+  $panelLayer.innerHTML = '';
+}
+
+function typeText(el, text, cb) {
+  clearTimeout(typingTimer);
+  typingTimer = null;
+  el.innerHTML = '';
+  typing = true;
+  const tokens = [];
+  // 简单粗体解析
+  text.split(/(\*\*[^*]+\*\*)/).forEach(t => {
+    if (t.startsWith('**') && t.endsWith('**')) {
+      tokens.push({ bold:true, text:t.slice(2,-2) });
+    } else if (t) {
+      tokens.push({ bold:false, text:t });
+    }
+  });
+  let charIdx = 0;
+  const chars = [];
+  tokens.forEach(tok => {
+    [...tok.text].forEach(c => chars.push({ c, bold:tok.bold }));
+  });
+  function tick() {
+    if (charIdx >= chars.length) {
+      typing = false;
+      typingTimer = null;
+      if (cb) cb();
+      return;
+    }
+    const { c, bold } = chars[charIdx++];
+    if (bold) {
+      let s = el.querySelector('strong:last-child');
+      if (!s || s._done) { s = document.createElement('strong'); el.appendChild(s); }
+      s.textContent += c;
+      if (charIdx < chars.length && !chars[charIdx].bold) s._done = true;
+    } else {
+      let last = el.lastChild;
+      if (!last || last.nodeType !== 3) { last = document.createTextNode(''); el.appendChild(last); }
+      last.textContent += c;
+    }
+    typingTimer = setTimeout(tick, c === '。' || c === '，' ? 80 : c === '\n' ? 150 : 45);
+  }
+  tick();
+}
+
+function isTypingLocked() {
+  return typing;
+}
+
+function setAvatar(speaker) {
+  const src = resolveAvatar(speaker);
+  $dialogAvatar.innerHTML = '';
+  if (src) {
+    const img = document.createElement('img');
+    img.src = src;
+    $dialogAvatar.appendChild(img);
+  } else {
+    const p = document.createElement('div');
+    p.id = 'dialog-avatar-placeholder';
+    p.textContent = speaker || '旁白';
+    $dialogAvatar.appendChild(p);
+  }
+}
+
+function getScenePanClass(src) {
+  let sum = 0;
+  for (let i = 0; i < src.length; i++) sum += src.charCodeAt(i);
+  return sum % 2 === 0 ? 'pan-left' : 'pan-right';
+}
+
+function shouldAutoAdvanceScene() {
+  const next = SCRIPT[idx];
+  return next && (next.type === 'dialog' || next.type === 'narrate');
+}
+
+function resetOverlays() {
+  clearTimeout(typingTimer);
+  clearTimeout(transitionTimer);
+  typingTimer = null;
+  typing = false;
+  transitionTimer = null;
+  transitionLocked = false;
+  $dialogBox.classList.add('hidden');
+  $speaker.textContent = '';
+  $dialogText.innerHTML = '';
+  $choicePanel.classList.remove('show');
+  $cardPanel.classList.remove('show');
+  $commentsPanel.classList.remove('show');
+  $tlPanel.classList.remove('show');
+  $tlPanel.onclick = null;
+  $tlNext.onclick = null;
+  document.getElementById('fullscreen-text-panel').classList.remove('show');
+  $transitionPanel.classList.remove('show');
+  $transitionPanel.classList.remove('has-cover');
+  $transitionCover.removeAttribute('src');
+  $transitionText.textContent = '';
+  clearPanels();
+}
+
+function showTransition(node) {
+  transitionLocked = true;
+  preloadNextChapterAssets(node);
+  $transitionText.textContent = node.text || '';
+  const cover = (node.cover || '').trim();
+  if (cover) {
+    $transitionPanel.classList.add('has-cover');
+    $transitionCover.src = withPreviewCache(cover);
+  } else {
+    $transitionPanel.classList.remove('has-cover');
+    $transitionCover.removeAttribute('src');
+  }
+  $transitionText.style.animation = 'none';
+  $transitionCover.style.animation = 'none';
+  void $transitionText.offsetHeight;
+  void $transitionCover.offsetHeight;
+  $transitionText.style.animation = '';
+  $transitionCover.style.animation = '';
+  $transitionPanel.classList.add('show');
+  const duration = Number.isFinite(node.duration) ? node.duration : 2000;
+  transitionTimer = setTimeout(() => {
+    transitionLocked = false;
+    $transitionPanel.classList.remove('show');
+    $transitionText.textContent = '';
+    transitionTimer = null;
+    if (!isStoryboardPreview) suppressSceneAutoAdvanceOnce = true;
+    continueStory();
+  }, Math.max(0, duration));
+}
+
+function renderScene(node) {
+  const bg = (node.bg || '').trim();
+  clearTimeout(sceneFadeTimer);
+
+  // 同一背景不重新渲染
+  if (bg && activeSceneImg.dataset.sceneSrc === bg) return;
+
+  idleSceneImg.onload = null;
+  idleSceneImg.onerror = null;
+
+  if (!bg) {
+    [$sceneImg, $sceneImgNext].forEach(img => {
+      img.classList.remove('visible', 'pan-left', 'pan-right');
+      img.style.display = 'none';
+      img.removeAttribute('src');
+      img.dataset.sceneSrc = '';
+    });
+    $placeholder.textContent = '[图片占位]\n' + (node._hint || '');
+    return;
+  }
+
+  const imgSrc = withPreviewCache(bg);
+  const nextImg = idleSceneImg;
+  const prevImg = activeSceneImg;
+
+  nextImg.dataset.sceneSrc = bg;
+  nextImg.classList.remove('visible', 'pan-left', 'pan-right');
+  nextImg.style.animation = 'none';
+  nextImg.style.display = 'block';
+  nextImg.onload = () => {
+    if (nextImg.dataset.sceneSrc !== bg) return;
+    $placeholder.textContent = '';
+    nextImg.classList.add(getScenePanClass(bg));
+    void nextImg.offsetHeight;
+    nextImg.style.animation = '';
+    nextImg.classList.add('visible');
+    prevImg.classList.remove('visible', 'pan-left', 'pan-right');
+    activeSceneImg = nextImg;
+    idleSceneImg = prevImg;
+    sceneFadeTimer = setTimeout(() => {
+      idleSceneImg.style.display = 'none';
+      idleSceneImg.removeAttribute('src');
+      idleSceneImg.dataset.sceneSrc = '';
+      idleSceneImg.classList.remove('pan-left', 'pan-right');
+    }, 620);
+  };
+  nextImg.onerror = () => {
+    if (nextImg.dataset.sceneSrc !== bg) return;
+    nextImg.classList.remove('visible', 'pan-left', 'pan-right');
+    nextImg.style.display = 'none';
+    nextImg.removeAttribute('src');
+    $placeholder.textContent = '[图片加载失败]\n' + (node._hint || bg);
+  };
+  $placeholder.textContent = '';
+  nextImg.src = imgSrc;
+  if (nextImg.complete && nextImg.naturalWidth) nextImg.onload();
+}
+
+let _dialogSfx = null;
+function clampVolume(value, fallback = 0.7) {
+  const volume = Number(value);
+  if (!Number.isFinite(volume)) return fallback;
+  return Math.max(0, Math.min(1, volume));
+}
+
+function _initDialogSfx(cfg) {
+  _dialogSfx = null;
+  window.__dialogSfxState = { enabled:false, src:'', volume:0, ready:false, error:'' };
+  if (!cfg?.enabled || !cfg?.src) return;
+  _dialogSfx = new Audio(cfg.src);
+  _dialogSfx.volume = clampVolume(cfg.volume);
+  window.__dialogSfxState = {
+    enabled:true,
+    src:cfg.src,
+    volume:_dialogSfx.volume,
+    ready:true,
+    error:''
+  };
+}
+
+function showDialog(speaker, text) {
+  setAvatar(speaker);
+  $speaker.textContent = speaker;
+  $dialogBox.classList.remove('hidden');
+  if (_dialogSfx) {
+    _dialogSfx.currentTime = 0;
+    _dialogSfx.play().catch(err => {
+      if (window.__dialogSfxState) window.__dialogSfxState.error = err?.message || String(err || '');
+    });
+  }
+  typeText($dialogText, text);
+}
+
+function showNode(node) {
+  resetOverlays();
+
+  if (node.chapter) $chapter.textContent = node.chapter;
+  applyAudioCues(node);
+
+  if (node.type === 'scene') {
+    renderScene(node);
+    // 音频处理
+    if (node.amb) playAmb(node.amb, !node.ambStop);
+    if (node.ambStop) stopAmb(node.ambFadeDuration || 0);
+    const holdScene = suppressSceneAutoAdvanceOnce;
+    suppressSceneAutoAdvanceOnce = false;
+    if (!previewMode && !holdScene && shouldAutoAdvanceScene()) advance();
+
+  } else if (node.type === 'narrate') {
+    suppressSceneAutoAdvanceOnce = false;
+    if (node.bg) renderScene(node);
+    const useFullscreenNarrate = node.fullscreen !== false;
+    if (useFullscreenNarrate) {
+      const panel = document.getElementById('fullscreen-text-panel');
+      const content = document.getElementById('fullscreen-text-content');
+      content.innerHTML = '';
+      panel.classList.add('show');
+      typeText(content, node.text);
+    } else {
+      showDialog('', node.text);
+    }
+
+  } else if (node.type === 'dialog') {
+    suppressSceneAutoAdvanceOnce = false;
+    if (node.bg) renderScene(node);
+    showDialog(node.speaker, node.text);
+
+  } else if (node.type === 'transition') {
+    suppressSceneAutoAdvanceOnce = false;
+    showTransition(node);
+
+  } else if (node.type === 'panel') {
+    suppressSceneAutoAdvanceOnce = false;
+    const el = document.createElement('div');
+    el.className = 'panel ' + (node.pos || 'br');
+    if (node.src) {
+      el.innerHTML = `<img src="${node.src}">`;
+    } else {
+      el.innerHTML = `<div class="panel-placeholder">[浮层占位]<br>${node._hint||''}</div>`;
+    }
+    $panelLayer.appendChild(el);
+    setTimeout(() => { el.style.opacity='0'; el.style.transition='opacity 3s'; el.style.opacity='1'; }, 3500);
+    if (!previewMode) advance();
+
+  } else if (node.type === 'choice') {
+    $choiceQ.textContent = node.question;
+    $choiceList.innerHTML = '';
+    node.options.forEach(opt => {
+      const btn = document.createElement('div');
+      btn.className = 'choice-btn';
+      btn.textContent = opt.text;
+      btn.onclick = () => {
+        if (btn.classList.contains('selected')) return;
+        document.querySelectorAll('.choice-btn').forEach(b => b.style.pointerEvents='none');
+        btn.classList.add('selected');
+        recordChoice({
+          type: 'choice',
+          question: node.question,
+          selected: opt.text,
+          score: opt.score || 0
+        });
+        setScore(opt.score || 0);
+        setTimeout(() => { $choicePanel.classList.remove('show'); continueStory(); }, 400);
+      };
+      $choiceList.appendChild(btn);
+    });
+    $choicePanel.classList.add('show');
+
+  } else if (node.type === 'comments') {
+    $commentsList.innerHTML = '';
+    node.posts.forEach((p, i) => {
+      const el = document.createElement('div');
+      el.className = 'comment-item';
+      el.style.animationDelay = (i * 0.15) + 's';
+      el.innerHTML = `<div class="comment-user">${p.user}</div><div class="comment-text">${p.text}</div>`;
+      $commentsList.appendChild(el);
+    });
+    $commentsPanel.classList.add('show');
+
+  } else if (node.type === 'timeline') {
+    $tlList.innerHTML = '';
+    const items = [];
+    node.events.forEach(e => {
+      const el = document.createElement('div');
+      el.className = 'tl-item';
+      el.innerHTML = `<div class="tl-dot"></div><div class="tl-year">${e.year}</div><div class="tl-text">${e.text}</div>`;
+      $tlList.appendChild(el);
+      items.push(el);
+    });
+    let shown = 0;
+    $tlPanel.classList.add('show');
+    $tlPanel.onclick = (e) => {
+      if (e.target === $tlNext || $tlNext.contains(e.target)) return;
+      if (shown < items.length) { items[shown].classList.add('visible'); shown++; }
+    };
+    $tlNext.onclick = () => {
+      $tlPanel.classList.remove('show');
+      $tlPanel.onclick = null; $tlNext.onclick = null;
+      continueStory();
+    };
+
+  } else if (node.type === 'card') {
+    $cardTitle.textContent = node.title;
+    $cardPhoto.innerHTML = node.photo
+      ? `<img src="${node.photo}" style="width:100%;height:100%;object-fit:contain;border-radius:6px;" onerror="this.parentNode.textContent='[${node._photoHint||node.photo}]'">`
+      : `[档案图占位] ${node._photoHint||''}`;
+    $cardText.textContent = node.text;
+    $cardTeaser.textContent = node.teaser || '';
+    $cardPanel.classList.add('show');
+
+  } else if (node.type === 'gacha') {
+    const pool = node.pool;
+    let total = pool.reduce((s,c) => s + c.weight, 0);
+
+    function draw() {
+      let r = Math.random() * total, cum = 0;
+      for (const c of pool) { cum += c.weight; if (r < cum) return c; }
+      return pool[pool.length - 1];
+    }
+
+    // 首抽禁 bad
+    let result;
+    do { result = draw(); } while (result.rarity === 'bad');
+
+    function showConfirm(res) {
+      const confirmBtn = document.createElement('div');
+      confirmBtn.className = 'choice-btn';
+      confirmBtn.textContent = '确认，继续';
+      confirmBtn.onclick = () => {
+        recordChoice({
+          type: 'gacha',
+          question: node.question,
+          selected: res.label || '',
+          text: res.text || '',
+          score: res.score || 0
+        });
+        setScore(res.score || 0);
+        $choicePanel.classList.remove('show');
+        continueStory();
+      };
+      $choiceList.appendChild(confirmBtn);
+    }
+
+    $choiceQ.textContent = node.question;
+    $choiceList.innerHTML = `
+      <div class="gacha-stage">
+        <div class="gacha-card-wrap">
+          <div class="gacha-card">
+            <div class="gacha-face gacha-back"></div>
+            <div class="gacha-face gacha-front">
+              <img class="gacha-card-image" src="dist/assets/bg3_2_v1.png" alt="">
+              <div class="gacha-label"></div>
+              <div class="gacha-text"></div>
+            </div>
+          </div>
+        </div>
+        <div class="gacha-status">王座裂缝里有一张牌。</div>
+        <div class="gacha-result-copy"></div>
+        <div class="choice-btn gacha-primary">抽出凶手牌</div>
+      </div>`;
+    $choicePanel.classList.add('show');
+    const card = $choiceList.querySelector('.gacha-card');
+    const label = $choiceList.querySelector('.gacha-label');
+    const text = $choiceList.querySelector('.gacha-text');
+    const status = $choiceList.querySelector('.gacha-status');
+    const copy = $choiceList.querySelector('.gacha-result-copy');
+    const drawBtn = $choiceList.querySelector('.gacha-primary');
+    drawBtn.onclick = () => {
+      drawBtn.classList.add('is-locked');
+      drawBtn.textContent = '抽取中...';
+      status.textContent = '红线正在收紧。';
+      card.classList.add('is-drawing');
+      window.setTimeout(() => {
+        card.classList.remove('is-drawing');
+        card.classList.add(`rarity-${result.rarity || 'normal'}`, 'is-revealed');
+        label.textContent = result.label || '';
+        text.textContent = result.text || '';
+        copy.textContent = result.text || '';
+        copy.classList.add('show');
+        status.textContent = '牌面已经翻开。';
+        drawBtn.remove();
+        showConfirm(result);
+      }, 1600);
+    };
+
+  } else if (node.type === 'hero') {
+    $choiceQ.textContent = '';
+    $choiceList.innerHTML = `
+      <div style="text-align:center;padding:40px 20px;">
+        <div style="font-size:36px;font-weight:900;color:#ffd54f;letter-spacing:4px;
+          text-shadow:0 0 20px rgba(255,213,79,.8);animation:heroIn .6s cubic-bezier(.34,1.56,.64,1);">
+          ${node.title}
+        </div>
+        ${node.image ? `<img src="${node.image}" style="width:100%;margin-top:24px;border-radius:6px;">` : ''}
+      </div>
+      <div class="choice-btn" onclick="document.getElementById('choice-panel').classList.remove('show');continueStory();" style="text-align:center;">继续 →</div>`;
+    $choicePanel.classList.add('show');
+
+  } else if (node.type === 'ending') {
+    const endingText = score >= 70
+      ? { name:'空白选票', text:'我没有替他抓住凶手。我只是陪他看见：人生不是一张由别人填写的选票。' }
+      : score >= 40
+      ? { name:'镜子裂开', text:'他知道自己不是受害者，也不是罪人。但旧梦还在镜子里发光。' }
+      : { name:'抓错凶手', text:'我写下一个漂亮标题。评论区很满意。但基莲没有得到答案。' };
+
+    $choiceQ.textContent = '';
+    $choiceList.innerHTML = `
+      <div style="text-align:center;padding:32px 20px 16px;">
+        <img class="ending-cover" src="dist/assets/avatar_xiaoba.png" alt="">
+        <div class="ending-game-title">基莲：下一场比赛</div>
+        <div style="font-size:24px;font-weight:900;color:#ffd54f;margin-bottom:20px;">${endingText.name}</div>
+        <div style="font-size:15px;color:#9e9e9e;line-height:1.8;">${endingText.text}</div>
+        <div style="margin-top:24px;font-size:13px;color:var(--cyan);">理解度 ${score} / 100</div>
+        ${renderChoiceHistory()}
+      </div>`;
+    $choicePanel.classList.add('show');
+
+  } else {
+    if (!previewMode) advance();
+  }
+}
+
+function advance() {
+  if (idx >= SCRIPT.length) return;
+  showNode(SCRIPT[idx++]);
+}
+
+function loadStoryPayload() {
+  if (typeof fetch === 'function') {
+    return fetch('/api/story')
+      .then(r => r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`)));
+  }
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open('GET', '/api/story', true);
+    xhr.onreadystatechange = () => {
+      if (xhr.readyState !== 4) return;
+      if (xhr.status >= 200 && xhr.status < 300) {
+        try {
+          resolve(JSON.parse(xhr.responseText));
+        } catch (err) {
+          reject(err);
+        }
+      } else {
+        reject(new Error(`HTTP ${xhr.status}`));
+      }
+    };
+    xhr.onerror = () => reject(new Error('无法读取 /api/story'));
+    xhr.send();
+  });
+}
+
+// 全局点击推进
+document.getElementById('game').addEventListener('click', e => {
+  retryAudioPlayback();
+  // 如果面板开着，不推进
+  if ($choicePanel.classList.contains('show')) return;
+  if ($cardPanel.classList.contains('show')) return;
+  if ($commentsPanel.classList.contains('show')) return;
+  if ($tlPanel.classList.contains('show')) return;
+  if (transitionLocked) return;
+  // 打字中点击只用于唤醒音频；全文打完后下一次点击才推进。
+  if (isTypingLocked()) return;
+  continueStory();
+});
+
+document.addEventListener('pointerdown', retryAudioPlayback, { passive:true });
+
+$cardClose.addEventListener('click', e => {
+  e.stopPropagation();
+  $cardPanel.classList.remove('show');
+  continueStory();
+});
+
+$commentsClose.addEventListener('click', e => {
+  e.stopPropagation();
+  $commentsPanel.classList.remove('show');
+  continueStory();
+});
+
+// 启动：优先从 /api/story 加载，fallback 内置 SCRIPT
+loadStoryPayload()
+  .then(data => {
+    syncStoryFrames(data.frames);
+    _initDialogSfx(data.settings?.dialogSfx ?? { src:'Audio/对话框出现.mp3', volume:0.7, enabled:true });
+  })
+  .catch(() => {})
+  .finally(() => {
+    if (!isStoryboardPreview) startVisualPlayback();
+  });
+
+// 接收 storyboard 跳帧指令
+window.addEventListener('message', e => {
+  const data = e.data || {};
+  if (data.type === 'story:update') {
+    syncStoryFrames(data.frames);
+    _initDialogSfx(data.settings?.dialogSfx ?? { src:'Audio/对话框出现.mp3', volume:0.7, enabled:true });
+    if (data.previewFrame) showPreviewFrame(data.previewFrame);
+    if (typeof data.jumpTo === 'number') jumpToFrame(data.jumpTo);
+    return;
+  }
+  if (typeof data.jumpTo === 'number') {
+    jumpToFrame(data.jumpTo);
+  }
+});
+
+// 移动端视口高度适配（解决地址栏变化导致 100vh 不准）
+function setAppHeight() {
+  const h = (window.visualViewport ? window.visualViewport.height : window.innerHeight);
+  document.documentElement.style.setProperty('--app-height', h + 'px');
+}
+setAppHeight();
+if (window.visualViewport) {
+  window.visualViewport.addEventListener('resize', setAppHeight);
+  window.visualViewport.addEventListener('scroll', setAppHeight);
+}
+window.addEventListener('resize', setAppHeight);
+window.addEventListener('orientationchange', setAppHeight);
+</script>
+</body>
+</html>

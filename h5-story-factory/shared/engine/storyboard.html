@@ -1,0 +1,1581 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>剧本帧览 · VNGame</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:#0a0a0c;color:#ccc;font-family:'PingFang SC',sans-serif;display:flex;height:100vh;overflow:hidden;}
+
+/* 左侧章节 tab */
+#tabs{width:56px;background:#111;display:flex;flex-direction:column;align-items:center;padding:16px 0;gap:8px;flex-shrink:0;border-right:1px solid #222;}
+.tab{writing-mode:vertical-rl;font-size:13px;font-weight:700;letter-spacing:2px;color:rgba(255,255,255,.35);padding:18px 12px;border-radius:8px;cursor:pointer;transition:all .15s;}
+.tab.active{background:rgba(0,229,255,.12);color:#00e5ff;}
+
+/* 中间帧列表 */
+#frames{width:420px;flex-shrink:0;overflow-y:auto;padding:20px 16px;border-right:1px solid #222;}
+.chapter-title{font-size:13px;letter-spacing:3px;color:#00e5ff;margin-bottom:16px;}
+.frame{display:flex;align-items:stretch;gap:10px;padding:12px 14px;border-radius:6px;cursor:pointer;margin-bottom:6px;border:1px solid transparent;transition:all .15s;position:relative;}
+.frame:hover{background:rgba(255,255,255,.04);}
+.frame.active{background:rgba(0,229,255,.08);border-color:rgba(0,229,255,.3);}
+.frame-num{font-size:12px;color:rgba(255,255,255,.3);min-width:38px;padding-top:3px;font-family:monospace;}
+.frame-type{font-size:11px;padding:3px 8px;border-radius:3px;margin-right:4px;flex-shrink:0;margin-top:2px;}
+.type-scene{background:rgba(0,191,165,.15);color:#00bfa5;}
+.type-dialog{background:rgba(100,149,237,.15);color:#6495ed;}
+.type-narrate{background:rgba(255,213,79,.1);color:#ffd54f;}
+.type-choice{background:rgba(233,30,140,.15);color:#e91e8c;}
+.type-panel{background:rgba(255,255,255,.08);color:#aaa;}
+.type-card{background:rgba(255,213,79,.2);color:#ffd54f;}
+.type-comments{background:rgba(0,229,255,.1);color:#00e5ff;}
+.type-timeline{background:rgba(0,229,255,.1);color:#00e5ff;}
+.type-gacha{background:rgba(233,30,140,.2);color:#e91e8c;}
+.type-hero{background:rgba(255,213,79,.25);color:#ffd54f;}
+.type-transition{background:rgba(255,255,255,.12);color:#fff;}
+.type-ending{background:rgba(255,255,255,.1);color:#fff;}
+.frame-info{flex:1;font-size:14px;color:rgba(255,255,255,.7);line-height:1.6;}
+.frame-info .hint{font-size:12px;color:rgba(255,255,255,.28);margin-top:3px;}
+.frame-bg{width:40px;height:54px;border-radius:3px;background:#1a1a1a;flex-shrink:0;overflow:hidden;}
+.frame-bg img{width:100%;height:100%;object-fit:cover;}
+.audio-rail{display:grid;grid-auto-flow:column;grid-auto-columns:10px;gap:3px;align-self:stretch;min-height:54px;flex-shrink:0;}
+.audio-lane{position:relative;width:10px;min-height:100%;}
+.audio-line{position:absolute;left:4px;top:-18px;bottom:-18px;width:2px;border-radius:2px;background:#00e5ff;opacity:.65;}
+.audio-line.kind-sfx{background:#ffd54f;}
+.audio-line.start{top:8px;}
+.audio-line.end{bottom:8px;}
+.audio-dot{position:absolute;left:1px;top:8px;width:8px;height:8px;border-radius:50%;background:#00e5ff;box-shadow:0 0 0 2px #0a0a0c;z-index:2;}
+.audio-dot.kind-sfx{background:#ffd54f;}
+.audio-label{display:none;}
+
+/* 状态栏 */
+#status{margin-bottom:14px;padding:10px 14px;background:#111;border-radius:6px;font-size:13px;color:rgba(255,255,255,.4);display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+#status span{color:#00e5ff;}
+.status-main{flex:1;min-width:150px;}
+.export-link{display:none;color:#ffd54f;text-decoration:none;font-size:12px;}
+.export-link:hover{text-decoration:underline;}
+.export-status{font-size:12px;color:rgba(255,255,255,.45);}
+.export-path{flex-basis:100%;display:none;font-size:11px;line-height:1.55;color:rgba(255,255,255,.42);word-break:break-all;}
+
+/* 右侧手机预览 */
+#preview{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;background:#050507;overflow-y:auto;padding:20px 0;}
+.phone-shell{position:relative;width:390px;height:844px;border-radius:44px;overflow:hidden;box-shadow:0 0 0 10px #1a1a1c,0 40px 80px rgba(0,0,0,.8);flex-shrink:0;}
+.phone-shell iframe{width:100%;height:100%;border:none;}
+
+.sfx-dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:#ffd54f;margin-right:3px;vertical-align:middle;}
+.sfx-tag{display:flex;flex-wrap:wrap;gap:4px;margin-top:5px;}
+.audio-pill{display:inline-flex;align-items:center;gap:4px;font-size:10px;padding:2px 7px;border-radius:10px;background:rgba(255,255,255,.07);color:rgba(255,255,255,.5);max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+
+/* 帧编辑面板 */
+#edit-panel{width:440px;background:#050507;border-left:1px solid #222;overflow-y:auto;flex-shrink:0;display:flex;flex-direction:column;}
+#edit-header{padding:16px 20px 12px;border-bottom:1px solid #1a1a1a;font-size:13px;color:#00e5ff;letter-spacing:2px;flex-shrink:0;}
+#edit-body{flex:1;overflow-y:auto;padding:16px 20px;}
+.field-label{font-size:11px;color:rgba(255,255,255,.35);letter-spacing:1px;margin:14px 0 5px;}
+.field-val{font-size:13px;color:rgba(255,255,255,.8);line-height:1.6;word-break:break-all;}
+.field-input{width:100%;background:#111;border:1px solid #2a2a2a;color:#ddd;font-size:13px;padding:8px 10px;border-radius:4px;outline:none;resize:vertical;font-family:inherit;}
+.field-input:focus{border-color:#00e5ff;}
+.field-input.error{border-color:#e91e8c;}
+.field-note{margin-top:6px;font-size:11px;line-height:1.5;color:rgba(255,255,255,.35);}
+.field-note.error{color:#e91e8c;}
+.field-row{display:flex;gap:8px;align-items:center;}
+.field-row .field-input{flex:1;}
+.file-input{display:none;}
+.audio-track-list{display:flex;flex-direction:column;gap:8px;}
+.audio-track-row{background:#0d0d10;border:1px solid #242424;border-radius:6px;padding:10px;}
+.audio-track-row.dirty{border-color:rgba(0,229,255,.45);}
+.audio-track-head{display:flex;align-items:center;gap:8px;margin-bottom:8px;}
+.track-id{font-family:monospace;font-size:12px;color:#00e5ff;background:rgba(0,229,255,.08);padding:3px 6px;border-radius:3px;}
+.track-status{font-size:11px;color:rgba(255,255,255,.48);}
+.audio-param-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px;}
+.audio-param-row label{font-size:10px;color:rgba(255,255,255,.35);}
+.audio-param-row .field-input{margin-top:4px;}
+.audio-track-actions{display:flex;gap:8px;margin-top:8px;}
+.edit-actions{display:flex;gap:8px;margin-top:20px;padding-bottom:20px;}
+.btn{padding:9px 16px;border-radius:4px;font-size:12px;cursor:pointer;border:1px solid;letter-spacing:1px;}
+.btn-small{padding:8px 10px;white-space:nowrap;flex-shrink:0;}
+.btn-primary{background:rgba(0,229,255,.12);border-color:#00e5ff;color:#00e5ff;}
+.btn-primary:hover{background:rgba(0,229,255,.22);}
+.btn-ghost{background:transparent;border-color:#333;color:rgba(255,255,255,.4);}
+.btn-ghost:hover{border-color:#555;color:#aaa;}
+.btn-warn{background:rgba(233,30,140,.1);border-color:#e91e8c;color:#e91e8c;}
+.prompt-box{background:#0d1117;border:1px solid #2a2a2a;border-radius:4px;padding:12px;font-size:11px;color:rgba(255,255,255,.5);line-height:1.7;word-break:break-all;max-height:200px;overflow-y:auto;}
+</style>
+</head>
+<body>
+
+<div id="tabs"></div>
+<div id="frames">
+  <div id="status">
+    <div class="status-main">共 <span id="total">0</span> 帧 · 第 <span id="cur-ch">-</span> 章</div>
+    <button class="btn btn-primary btn-small" id="export-work-btn" onclick="exportWork()">导出作品</button>
+    <a class="export-link" id="export-link" href="/作品.html" target="_blank">打开作品</a>
+    <span class="export-status" id="export-status"></span>
+    <div class="export-path" id="export-path"></div>
+  </div>
+  <div id="frame-list"></div>
+</div>
+<div id="preview">
+  <div class="phone-shell">
+    <iframe id="preview-frame" data-preview-src="demo.html?preview=1"></iframe>
+  </div>
+</div>
+<div id="edit-panel">
+  <div id="edit-header" style="display:flex;align-items:center;justify-content:space-between;">
+    <span>帧编辑</span>
+    <button class="btn btn-primary btn-small" id="save-all-btn" onclick="saveAllFrames()">保存全部</button>
+    <button class="btn btn-ghost btn-small" onclick="showGlobalSettings()">全局音效</button>
+  </div>
+  <div id="edit-body">
+    <div style="color:rgba(255,255,255,.2);font-size:12px;margin-top:40px;text-align:center;">← 点击左侧帧开始编辑</div>
+  </div>
+</div>
+
+<script>
+const PROJECT_ROOT = './';
+const ASSET_PREFIX = 'dist/assets/';
+const AUDIO_PREFIX = 'Audio/';
+const IMAGE_EXT_RE = /\.(png|jpe?g|webp|gif|avif)$/i;
+const AUDIO_EXT_RE = /\.(mp3|wav|m4a|aac|ogg|flac)$/i;
+const TEXT_NODE_TYPES = new Set(['dialog', 'narrate']);
+const OVERLAY_NODE_TYPES = new Set(['choice', 'panel', 'card', 'comments', 'timeline', 'gacha', 'hero', 'transition', 'ending']);
+const $previewFrame = document.getElementById('preview-frame');
+let latestPreviewPayload = null;
+let previewFrameStarted = false;
+let syncFrameFromPreview = null;
+let currentScript = [];
+let storySettings = { dialogSfx: { src: 'Audio/对话框出现.mp3', volume: 0.7, enabled: true } };
+
+function escapeHtml(value) {
+  return String(value ?? '').replace(/[&<>"']/g, ch => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;'
+  }[ch]));
+}
+
+function normalizeBgPath(raw) {
+  const original = (raw || '').trim();
+  if (!original || original === '[base64]' || original.startsWith('data:')) {
+    return { ok: true, value: original };
+  }
+  if (/^https?:\/\//i.test(original)) {
+    return { ok: true, value: original };
+  }
+
+  let path = original.replace(/^file:\/\//i, '');
+  try { path = decodeURI(path); } catch (e) {}
+  path = path.replace(/\\/g, '/').split(/[?#]/)[0];
+
+  if (path.startsWith(PROJECT_ROOT)) {
+    path = path.slice(PROJECT_ROOT.length);
+  } else if (path.startsWith('/Users/')) {
+    return {
+      ok: false,
+      value: original,
+      message: 'bg 路径必须放在当前项目里；请把图片放进 dist/assets/ 后再选择。'
+    };
+  } else if (path.startsWith('/')) {
+    path = path.replace(/^\/+/, '');
+  } else if (!path.includes('/') && !path.includes(':')) {
+    path = ASSET_PREFIX + path;
+  }
+
+  if (path.startsWith(ASSET_PREFIX) && !IMAGE_EXT_RE.test(path)) {
+    path += '.png';
+  }
+  return { ok: true, value: path };
+}
+
+function normalizeAudioPath(raw) {
+  const original = (raw || '').trim();
+  if (!original || original.startsWith('data:')) {
+    return { ok: true, value: original };
+  }
+  if (/^https?:\/\//i.test(original)) {
+    return { ok: true, value: original };
+  }
+
+  let path = original.replace(/^file:\/\//i, '');
+  try { path = decodeURI(path); } catch (e) {}
+  path = path.replace(/\\/g, '/').split(/[?#]/)[0];
+
+  if (path.startsWith(PROJECT_ROOT)) {
+    path = path.slice(PROJECT_ROOT.length);
+  } else if (path.startsWith('/Users/')) {
+    return {
+      ok: false,
+      value: original,
+      message: '音频路径必须放在当前项目里；请用“导入音频”复制到 Audio/ 后再保存。'
+    };
+  } else if (path.startsWith('/')) {
+    path = path.replace(/^\/+/, '');
+  } else if (!path.includes('/') && !path.includes(':')) {
+    path = AUDIO_PREFIX + path;
+  }
+
+  if (path.startsWith(AUDIO_PREFIX) && !AUDIO_EXT_RE.test(path)) {
+    path += '.mp3';
+  }
+  return { ok: true, value: path };
+}
+
+function buildPrompt(node) {
+  const style = `animated comic-book feature film look, Spider-Verse style, stylized 3D+2D comic overpaint, halftone dots, bold graphic shapes, cyan/magenta rim light, ALL characters children 8-12, no adults, NO logos NO badges NO brand marks.`;
+  const hint = node?._hint?.split('｜')[1] || node?.prompt || '';
+  const orient = `Vertical 9:16 portrait, lower 35% darker for dialog overlay.`;
+  return `${style}\n\n${hint}\n\n${orient}`.trim();
+}
+
+function isOverlayNode(node) {
+  return node && (TEXT_NODE_TYPES.has(node.type) || OVERLAY_NODE_TYPES.has(node.type));
+}
+
+function makeStoryboardFrame(parts) {
+  const frame = {
+    frameIdx: parts.frameIdx,
+    sceneIdx: parts.sceneIdx,
+    overlayIdx: parts.overlayIdx,
+    sceneNode: parts.sceneNode || null,
+    overlayNode: parts.overlayNode || null,
+    ownsScene: !!parts.ownsScene,
+    inheritedSceneIdx: parts.inheritedSceneIdx ?? null,
+    nodeIndices: parts.nodeIndices,
+    chapter: parts.chapter || '未分章'
+  };
+  frame.rawStart = Math.min(...frame.nodeIndices);
+  frame.rawEnd = Math.max(...frame.nodeIndices);
+  return frame;
+}
+
+function buildStoryboardFrames(script) {
+  const frames = [];
+  let lastChapter = '未分章';
+  let currentSceneIdx = null;
+  let currentSceneNode = null;
+
+  for (let i = 0; i < script.length; i++) {
+    const node = script[i];
+    if (node.chapter) lastChapter = node.chapter;
+
+    if (node.type === 'scene') {
+      currentSceneIdx = i;
+      currentSceneNode = node;
+      const next = script[i + 1];
+      const mergeNext = next && TEXT_NODE_TYPES.has(next.type);
+      if (mergeNext) {
+        if (next.chapter) lastChapter = next.chapter;
+        frames.push(makeStoryboardFrame({
+          frameIdx: frames.length,
+          sceneIdx: i,
+          overlayIdx: i + 1,
+          sceneNode: node,
+          overlayNode: next,
+          ownsScene: true,
+          nodeIndices: [i, i + 1],
+          chapter: node.chapter || next.chapter || lastChapter
+        }));
+        i++;
+      } else {
+        frames.push(makeStoryboardFrame({
+          frameIdx: frames.length,
+          sceneIdx: i,
+          overlayIdx: null,
+          sceneNode: node,
+          overlayNode: null,
+          ownsScene: true,
+          nodeIndices: [i],
+          chapter: node.chapter || lastChapter
+        }));
+      }
+      continue;
+    }
+
+    if (isOverlayNode(node)) {
+      frames.push(makeStoryboardFrame({
+        frameIdx: frames.length,
+        sceneIdx: currentSceneIdx,
+        overlayIdx: i,
+        sceneNode: currentSceneNode,
+        overlayNode: node,
+        ownsScene: false,
+        inheritedSceneIdx: currentSceneIdx,
+        nodeIndices: [i],
+        chapter: node.chapter || currentSceneNode?.chapter || lastChapter
+      }));
+      continue;
+    }
+
+    frames.push(makeStoryboardFrame({
+      frameIdx: frames.length,
+      sceneIdx: currentSceneIdx,
+      overlayIdx: i,
+      sceneNode: currentSceneNode,
+      overlayNode: node,
+      ownsScene: false,
+      inheritedSceneIdx: currentSceneIdx,
+      nodeIndices: [i],
+      chapter: node.chapter || currentSceneNode?.chapter || lastChapter
+    }));
+  }
+
+  return frames;
+}
+
+function getSceneLabel(sceneNode) {
+  return sceneNode?._hint?.split('｜')[0] || sceneNode?.id || '继承画面';
+}
+
+function getFrameBgSrc(frame) {
+  const bg = frame.overlayNode?.cover || frame.overlayNode?.bg || frame.sceneNode?.bg || '';
+  return bg && bg !== '[img]' ? bg : '';
+}
+
+function getOverlayLabel(node) {
+  if (!node) return '无对白';
+  if (node.type === 'dialog') return `${node.speaker || '角色'}：${node.text || ''}`;
+  if (node.type === 'narrate') return node.text || '旁白';
+  if (node.type === 'choice') return node.question || '选择题';
+  if (node.type === 'transition') return node.text || '章节转场';
+  if (node.title) return node.title;
+  if (node.question) return node.question;
+  return node.type;
+}
+
+function getFrameMain(frame) {
+  const scene = frame.overlayNode?.bg ? basename(frame.overlayNode.bg).replace(/\.[^.]+$/, '') : getSceneLabel(frame.sceneNode);
+  const overlay = getOverlayLabel(frame.overlayNode);
+  return frame.overlayNode ? `${scene} / ${overlay}` : scene;
+}
+
+function getFrameType(frame) {
+  if (frame.sceneNode && frame.overlayNode && frame.ownsScene) return `scene+${frame.overlayNode.type}`;
+  if (frame.overlayNode) return frame.overlayNode.type;
+  return frame.sceneNode?.type || 'frame';
+}
+
+function basename(path) {
+  return (path || '').split('/').pop() || path || '';
+}
+
+function getAudioKind(trackId, cue, fallback = 'bgm') {
+  const id = (trackId || '').toLowerCase();
+  if (fallback === 'sfx' || id.includes('sfx') || cue?.loop === false) return 'sfx';
+  return 'bgm';
+}
+
+function getAudioCuesFromNode(node, frameIdx) {
+  if (!node) return [];
+  const cues = [];
+  if (node.audio) {
+    Object.entries(node.audio).forEach(([trackId, cue]) => {
+      const kind = getAudioKind(trackId, cue);
+      const label = cue.src ? basename(cue.src) : trackId;
+      if (cue.src) {
+        cues.push({ frameIdx, trackId, kind, label, action: kind === 'sfx' ? 'marker' : 'start', cue });
+      } else if (cue.stop || cue.volume === 0) {
+        cues.push({ frameIdx, trackId, kind, label, action:'stop', cue });
+      } else if (cue.volume !== undefined || cue.fade !== undefined) {
+        cues.push({ frameIdx, trackId, kind, label, action:'event', cue });
+      }
+    });
+  }
+  if (node.bgm) {
+    const label = typeof node.bgm === 'string' ? node.bgm : (node.bgm.track || 'bgm');
+    cues.push({ frameIdx, trackId:'legacy_bgm', kind:'bgm', label:basename(label), action:'start', cue:{ src:label } });
+  }
+  if (node.sfx) {
+    const label = typeof node.sfx === 'string' ? node.sfx : (node.sfx.name || 'sfx');
+    cues.push({ frameIdx, trackId:`legacy_sfx_${frameIdx}`, kind:'sfx', label:basename(label), action:'marker', cue:node.sfx });
+  }
+  return cues;
+}
+
+function getFrameAudioCues(frame) {
+  const cues = [];
+  if (frame.ownsScene) cues.push(...getAudioCuesFromNode(frame.sceneNode, frame.frameIdx));
+  cues.push(...getAudioCuesFromNode(frame.overlayNode, frame.frameIdx));
+  return cues;
+}
+
+function buildAudioSegments(frames) {
+  const segments = [];
+  const active = {};
+  frames.forEach(frame => {
+    getFrameAudioCues(frame).forEach(cue => {
+      if (cue.action === 'start') {
+        if (active[cue.trackId]) {
+          active[cue.trackId].end = Math.max(frame.frameIdx - 1, active[cue.trackId].start);
+          segments.push(active[cue.trackId]);
+        }
+        active[cue.trackId] = {
+          trackId: cue.trackId,
+          kind: cue.kind,
+          label: cue.label,
+          start: frame.frameIdx,
+          end: frame.frameIdx,
+          events: [{ frameIdx: frame.frameIdx, type:'start', label: cue.label }]
+        };
+      } else if (cue.action === 'stop') {
+        if (active[cue.trackId]) {
+          active[cue.trackId].end = Math.max(frame.frameIdx - 1, active[cue.trackId].start);
+          active[cue.trackId].events.push({ frameIdx: frame.frameIdx, type:'stop', label: cue.label });
+          segments.push(active[cue.trackId]);
+          delete active[cue.trackId];
+        } else {
+          segments.push({
+            trackId: cue.trackId,
+            kind: cue.kind,
+            label: cue.label,
+            start: frame.frameIdx,
+            end: frame.frameIdx,
+            events: [{ frameIdx: frame.frameIdx, type:'stop', label: cue.label }]
+          });
+        }
+      } else if (cue.action === 'event') {
+        if (active[cue.trackId]) {
+          active[cue.trackId].events.push({ frameIdx: frame.frameIdx, type:'event', label: cue.label });
+        }
+      } else if (cue.action === 'marker') {
+        segments.push({
+          trackId: cue.trackId,
+          kind: cue.kind,
+          label: cue.label,
+          start: frame.frameIdx,
+          end: frame.frameIdx,
+          events: [{ frameIdx: frame.frameIdx, type:'marker', label: cue.label }]
+        });
+      }
+    });
+  });
+
+  const lastFrame = frames[frames.length - 1]?.frameIdx ?? 0;
+  Object.values(active).forEach(seg => {
+    seg.end = lastFrame;
+    segments.push(seg);
+  });
+  return segments;
+}
+
+function getFrameAudioLabel(frame) {
+  return getFrameAudioCues(frame)
+    .filter(cue => cue.action === 'start' || cue.action === 'marker' || cue.action === 'stop')
+    .map(cue => cue.action === 'stop' ? `停止 ${cue.trackId}` : cue.label)
+    .join(' + ');
+}
+
+function getAudioLanes(segments) {
+  const lanes = [];
+  segments.forEach(seg => {
+    if (!lanes.find(lane => lane.trackId === seg.trackId)) {
+      lanes.push({ trackId: seg.trackId, kind: seg.kind, label: seg.label });
+    }
+  });
+  return lanes;
+}
+
+function renderAudioRail(frame, segments, lanes) {
+  const rail = document.createElement('div');
+  rail.className = 'audio-rail';
+  if (!lanes.length) return rail;
+
+  lanes.forEach(lane => {
+    const laneEl = document.createElement('div');
+    laneEl.className = 'audio-lane';
+    const seg = segments.find(s => s.trackId === lane.trackId && frame.frameIdx >= s.start && frame.frameIdx <= s.end);
+    const event = seg?.events.find(e => e.frameIdx === frame.frameIdx);
+    if (seg) {
+      const line = document.createElement('div');
+      line.className = `audio-line kind-${seg.kind}${frame.frameIdx === seg.start ? ' start' : ''}${frame.frameIdx === seg.end ? ' end' : ''}`;
+      line.title = `${seg.label} #${String(seg.start + 1).padStart(3, '0')} - #${String(seg.end + 1).padStart(3, '0')}`;
+      laneEl.appendChild(line);
+    }
+    if (event) {
+      const dot = document.createElement('div');
+      dot.className = `audio-dot kind-${seg?.kind || lane.kind}`;
+      dot.title = `${event.type}: ${event.label}`;
+      laneEl.appendChild(dot);
+      if (event.type === 'start') {
+        const label = document.createElement('div');
+        label.className = 'audio-label';
+        label.textContent = event.label;
+        laneEl.appendChild(label);
+      }
+    }
+    rail.appendChild(laneEl);
+  });
+  return rail;
+}
+
+function sendPreviewUpdate(script, frame) {
+  latestPreviewPayload = {
+    type: 'story:update',
+    frames: script,
+    settings: storySettings,
+    previewFrame: {
+      frameIdx: frame.frameIdx,
+      sceneIdx: frame.sceneIdx,
+      overlayIdx: frame.overlayIdx
+    }
+  };
+  $previewFrame.contentWindow?.postMessage(latestPreviewPayload, '*');
+}
+
+function ensurePreviewFrameStarted() {
+  if (previewFrameStarted) return;
+  const src = $previewFrame.dataset.previewSrc;
+  if (!src) return;
+  previewFrameStarted = true;
+  requestAnimationFrame(() => {
+    $previewFrame.src = src;
+  });
+}
+
+$previewFrame.addEventListener('load', () => {
+  if (!latestPreviewPayload) return;
+  setTimeout(() => {
+    $previewFrame.contentWindow?.postMessage(latestPreviewPayload, '*');
+  }, 0);
+});
+
+window.addEventListener('message', e => {
+  if (e.source !== $previewFrame.contentWindow) return;
+  const data = e.data || {};
+  if (data.type !== 'story:preview-frame') return;
+  if (!Number.isInteger(data.frameIdx)) return;
+  if (syncFrameFromPreview) syncFrameFromPreview(data.frameIdx);
+});
+
+fetch('/api/story')
+  .then(r => r.json())
+  .then(data => {
+    const script = data.frames || data;
+    if (data.settings) Object.assign(storySettings, data.settings);
+    render(script);
+    ensurePreviewFrameStarted();
+  })
+  .catch(() => {
+    fetch('demo.html').then(r => r.text()).then(html => {
+      const m = html.match(/const SCRIPT = \[([\s\S]*?)\];\s*\n\/\/ ── 引擎/);
+      if (!m) return;
+      const cleaned = m[1].replace(/bg:'data:image\/[^']{20,}'/g, "bg:'[img]'");
+      render(eval('[' + cleaned + ']'));
+      ensurePreviewFrameStarted();
+    });
+  });
+
+async function exportWork() {
+  const btn = document.getElementById('export-work-btn');
+  const status = document.getElementById('export-status');
+  const link = document.getElementById('export-link');
+  const pathBox = document.getElementById('export-path');
+  if (!currentScript.length) {
+    status.textContent = '没有可导出的帧';
+    return;
+  }
+
+  btn.disabled = true;
+  btn.textContent = '导出中...';
+  status.textContent = '正在保存 story.json';
+  link.style.display = 'none';
+  pathBox.style.display = 'none';
+  pathBox.textContent = '';
+
+  try {
+    const saveRes = await fetch('/api/story', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ frames: currentScript, settings: storySettings })
+    });
+    if (!saveRes.ok) throw new Error(`保存失败：${saveRes.status}`);
+
+    status.textContent = '正在生成作品.html';
+    const exportRes = await fetch('/api/export-work', { method: 'POST' });
+    const data = await exportRes.json().catch(() => ({}));
+    if (!exportRes.ok || data.ok === false) {
+      throw new Error(data.error || `导出失败：${exportRes.status}`);
+    }
+
+    const url = data.url || '/作品.html';
+    link.href = url;
+    link.textContent = `打开 ${data.path || '作品.html'}`;
+    link.style.display = 'inline';
+    status.textContent = '已导出';
+    const deployFiles = Array.isArray(data.deployFiles) ? data.deployFiles.join('、') : '作品.html、dist/assets/、Audio/';
+    pathBox.innerHTML = `本地文件：${escapeHtml(data.absolutePath || './作品.html')}<br>部署文件：从 ${escapeHtml(data.deployRoot || PROJECT_ROOT)} 上传 ${escapeHtml(deployFiles)}`;
+    pathBox.style.display = 'block';
+  } catch (err) {
+    status.textContent = err.message || '导出失败';
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '导出作品';
+  }
+}
+
+function render(script, selectedFrameIdx = 0) {
+  currentScript = script;
+  let storyboardFrames = buildStoryboardFrames(script);
+  document.getElementById('total').textContent = storyboardFrames.length;
+
+  const chapters = {}, chapterOrder = [];
+  storyboardFrames.forEach(frame => {
+    if (!chapters[frame.chapter]) { chapters[frame.chapter] = []; chapterOrder.push(frame.chapter); }
+    chapters[frame.chapter].push(frame);
+  });
+
+  const tabsEl = document.getElementById('tabs');
+  tabsEl.innerHTML = '';
+  chapterOrder.forEach((ch, ci) => {
+    const btn = document.createElement('div');
+    btn.className = 'tab';
+    btn.textContent = `第${['一','二','三','四','五'][ci] || ci+1}章`;
+    btn.onclick = () => showChapter(ch, ci, { activateFirst: true });
+    tabsEl.appendChild(btn);
+  });
+
+  function showChapter(ch, ci, options = {}) {
+    document.querySelectorAll('.tab').forEach((t, i) => t.classList.toggle('active', i === ci));
+    document.getElementById('cur-ch').textContent = ['一','二','三','四','五'][ci] || ci + 1;
+
+    const list = document.getElementById('frame-list');
+    list.innerHTML = '';
+    const frames = chapters[ch] || [];
+    const audioSegments = buildAudioSegments(frames);
+    const audioLanes = getAudioLanes(audioSegments);
+
+    const title = document.createElement('div');
+    title.className = 'chapter-title';
+    title.textContent = ch;
+    list.appendChild(title);
+
+    frames.forEach(frame => {
+      const row = document.createElement('div');
+      row.className = 'frame';
+      row.id = `f${frame.frameIdx}`;
+
+      const num = document.createElement('div');
+      num.className = 'frame-num';
+      num.textContent = `#${String(frame.frameIdx + 1).padStart(3, '0')}`;
+
+      const badge = document.createElement('span');
+      const badgeType = frame.overlayNode?.type || frame.sceneNode?.type || 'panel';
+      badge.className = `frame-type type-${badgeType}`;
+      badge.textContent = getFrameType(frame);
+
+      const info = document.createElement('div');
+      info.className = 'frame-info';
+      const main = document.createElement('div');
+      const mainText = getFrameMain(frame);
+      main.textContent = mainText.slice(0, 48) + (mainText.length > 48 ? '…' : '');
+      info.appendChild(main);
+
+      const hint = document.createElement('div');
+      hint.className = 'hint';
+      hint.textContent = `nodes #${String(frame.rawStart + 1).padStart(3, '0')}${frame.rawEnd !== frame.rawStart ? `-#${String(frame.rawEnd + 1).padStart(3, '0')}` : ''}${!frame.ownsScene && frame.sceneIdx !== null ? ` · 继承 #${String(frame.sceneIdx + 1).padStart(3, '0')}` : ''}`;
+      info.appendChild(hint);
+
+      const audioLabel = getFrameAudioLabel(frame);
+      const sfxNode = frame.overlayNode?.sfx || frame.sceneNode?.sfx;
+      if (audioLabel || sfxNode) {
+        const sfxTag = document.createElement('div');
+        sfxTag.className = 'sfx-tag';
+        if (audioLabel) {
+          const pill = document.createElement('span');
+          pill.className = 'audio-pill';
+          pill.title = audioLabel;
+          pill.innerHTML = `<span class="sfx-dot" style="background:#00e5ff"></span>${audioLabel.split('/').pop()}`;
+          sfxTag.appendChild(pill);
+        }
+        if (sfxNode) {
+          const name = typeof sfxNode === 'string' ? sfxNode : sfxNode.name || '';
+          const pill = document.createElement('span');
+          pill.className = 'audio-pill';
+          pill.title = name;
+          pill.innerHTML = `<span class="sfx-dot"></span>${name.split('/').pop()}`;
+          sfxTag.appendChild(pill);
+        }
+        info.appendChild(sfxTag);
+      }
+
+      const bgDiv = document.createElement('div');
+      bgDiv.className = 'frame-bg';
+      const bgSrc = getFrameBgSrc(frame);
+      if (bgSrc) {
+        const img = document.createElement('img');
+        img.loading = 'lazy';
+        img.decoding = 'async';
+        img.src = bgSrc;
+        bgDiv.appendChild(img);
+      }
+
+      row.appendChild(renderAudioRail(frame, audioSegments, audioLanes));
+      row.appendChild(num);
+      row.appendChild(badge);
+      row.appendChild(info);
+      row.appendChild(bgDiv);
+      row.onclick = () => activateFrame(frame.frameIdx, { sendPreview: true, scroll: false });
+      list.appendChild(row);
+    });
+
+    if (options.activateFirst && frames.length) {
+      activateFrame(frames[0].frameIdx, { sendPreview: true, scroll: false });
+    }
+  }
+
+  function activateFrame(frameIdx, options = {}) {
+    const { sendPreview = true, scroll = false } = options;
+    const frame = storyboardFrames[frameIdx];
+    if (!frame) return;
+    let row = document.getElementById(`f${frame.frameIdx}`);
+    if (!row) {
+      const chapterIdx = chapterOrder.indexOf(frame.chapter);
+      if (chapterIdx >= 0) showChapter(frame.chapter, chapterIdx);
+      row = document.getElementById(`f${frame.frameIdx}`);
+    }
+    if (!row) return;
+
+    document.querySelectorAll('.frame').forEach(f => f.classList.remove('active'));
+    row.classList.add('active');
+    if (scroll) row.scrollIntoView({ block: 'nearest' });
+    if (sendPreview) sendPreviewUpdate(script, frame);
+    showEditPanel(frame, script);
+  }
+
+  syncFrameFromPreview = frameIdx => {
+    activateFrame(frameIdx, { sendPreview: false, scroll: true });
+  };
+
+  function getAudioTarget(frame) {
+    return frame.overlayNode || frame.sceneNode || null;
+  }
+
+  function getEditableAudioTrack(node, kind, fallbackTrackId) {
+    if (!node) return { trackId: fallbackTrackId, src: '', volume: '' };
+    const audio = node.audio || {};
+    const direct = audio[fallbackTrackId];
+    if (direct?.src) return { trackId: fallbackTrackId, src: direct.src, volume: direct.volume ?? '' };
+
+    const found = Object.entries(audio).find(([trackId, cue]) => getAudioKind(trackId, cue) === kind && cue?.src);
+    if (found) return { trackId: found[0], src: found[1].src, volume: found[1].volume ?? '' };
+
+    const legacy = node[fallbackTrackId];
+    if (legacy) {
+      return {
+        trackId: fallbackTrackId,
+        src: typeof legacy === 'string' ? legacy : (legacy.track || legacy.name || ''),
+        volume: typeof legacy === 'object' ? (legacy.volume ?? '') : ''
+      };
+    }
+    return { trackId: fallbackTrackId, src: '', volume: '' };
+  }
+
+  function getActiveAudioTrack(frame, kind, fallbackTrackId) {
+    const frames = (chapters[frame.chapter] || storyboardFrames).filter(f => f.chapter === frame.chapter);
+    const segments = buildAudioSegments(frames);
+    const seg = segments.find(s => s.kind === kind && frame.frameIdx >= s.start && frame.frameIdx <= s.end);
+    return seg ? { trackId: seg.trackId, src: '', volume: '', activeLabel: seg.label } : { trackId: fallbackTrackId, src: '', volume: '' };
+  }
+
+  function getAudioEditorMeta(frame, kind, fallbackTrackId) {
+    const target = getAudioTarget(frame);
+    const editable = getEditableAudioTrack(target, kind, fallbackTrackId);
+    if (editable.src) return editable;
+    return getActiveAudioTrack(frame, kind, fallbackTrackId);
+  }
+
+  function safeDomId(value) {
+    return String(value || '').replace(/[^a-zA-Z0-9_-]/g, '_') || 'track';
+  }
+
+  function getChapterAudioSegments(frame, kind) {
+    const frames = (chapters[frame.chapter] || storyboardFrames).filter(f => f.chapter === frame.chapter);
+    return buildAudioSegments(frames).filter(seg => seg.kind === kind);
+  }
+
+  function getCueAction(cue) {
+    if (!cue) return 'inherited';
+    if (cue.src) return 'start';
+    if (cue.stop || cue.volume === 0) return 'stop';
+    if (cue.volume !== undefined || cue.fade !== undefined) return 'event';
+    return 'event';
+  }
+
+  function getCueStatus(action) {
+    if (action === 'start') return '当前帧开始';
+    if (action === 'stop') return '当前帧停止';
+    if (action === 'event') return '当前帧音量事件';
+    if (action === 'new') return '新轨道';
+    return '继承播放中';
+  }
+
+  function getBgmTrackRows(frame) {
+    const target = getAudioTarget(frame) || {};
+    const rows = new Map();
+    let order = 0;
+
+    getChapterAudioSegments(frame, 'bgm')
+      .filter(seg => frame.frameIdx >= seg.start && frame.frameIdx <= seg.end)
+      .forEach(seg => {
+        rows.set(seg.trackId, {
+          trackId: seg.trackId,
+          action: 'inherited',
+          status: '继承播放中',
+          activeLabel: seg.label,
+          src: '',
+          volume: '',
+          fade: '',
+          hasCurrentCue: false,
+          order: order++
+        });
+      });
+
+    Object.entries(target.audio || {}).forEach(([trackId, cue]) => {
+      if (getAudioKind(trackId, cue) !== 'bgm') return;
+      const action = getCueAction(cue);
+      const existing = rows.get(trackId) || { trackId, order: order++ };
+      rows.set(trackId, {
+        ...existing,
+        action,
+        status: getCueStatus(action),
+        activeLabel: existing.activeLabel || '',
+        src: cue.src || '',
+        volume: cue.volume ?? '',
+        fade: cue.fade ?? '',
+        hasCurrentCue: true
+      });
+    });
+
+    if (target.bgm) {
+      const src = typeof target.bgm === 'string' ? target.bgm : (target.bgm.track || '');
+      rows.set('legacy_bgm', {
+        trackId: 'legacy_bgm',
+        action: 'start',
+        status: '旧 BGM 字段',
+        activeLabel: '',
+        src,
+        volume: '',
+        fade: '',
+        hasCurrentCue: true,
+        order: order++
+      });
+    }
+
+    return [...rows.values()].sort((a, b) => a.order - b.order);
+  }
+
+  function renderBgmTrackRow(frame, row, dirty = false) {
+    const fileId = `bgm-file-${frame.frameIdx}-${safeDomId(row.trackId)}`;
+    const srcPlaceholder = row.activeLabel ? `继承播放中：${row.activeLabel}` : 'Audio/xxx.mp3';
+    const clearDisabled = row.hasCurrentCue ? '' : 'disabled';
+    return `
+      <div class="audio-track-row${dirty ? ' dirty' : ''}" data-kind="bgm" data-track-id="${escapeHtml(row.trackId)}" data-action="${escapeHtml(row.action)}" data-dirty="${dirty ? '1' : '0'}">
+        <div class="audio-track-head">
+          <span class="track-id">${escapeHtml(row.trackId)}</span>
+          <span class="track-status">${escapeHtml(row.status)}${row.activeLabel ? ` · ${escapeHtml(row.activeLabel)}` : ''}</span>
+        </div>
+        <div class="field-row">
+          <input class="field-input" data-audio-field="src" placeholder="${escapeHtml(srcPlaceholder)}" value="${escapeHtml(row.src)}" oninput="markAudioTrackDirty(this)">
+          <button class="btn btn-primary btn-small" onclick='document.getElementById(${JSON.stringify(fileId)}).click()'>导入音频</button>
+          <button class="btn btn-ghost btn-small" onclick='showAudioLibrary("bgm", ${frame.frameIdx}, ${JSON.stringify(row.trackId)})'>引用已有</button>
+          <input class="file-input" id="${escapeHtml(fileId)}" type="file" accept="audio/*" onchange='uploadBgmTrackFile(${frame.frameIdx}, ${JSON.stringify(row.trackId)}, this)'>
+        </div>
+        <div class="audio-param-row">
+          <label>音量
+            <input class="field-input" data-audio-field="volume" placeholder="0-1" value="${escapeHtml(row.volume)}" oninput="markAudioTrackDirty(this)">
+          </label>
+          <label>fade(ms)
+            <input class="field-input" data-audio-field="fade" placeholder="800" value="${escapeHtml(row.fade)}" oninput="markAudioTrackDirty(this)">
+          </label>
+        </div>
+        <div class="audio-track-actions">
+          <button class="btn btn-warn btn-small" onclick='stopBgmTrack(${frame.frameIdx}, ${JSON.stringify(row.trackId)})'>停止该轨</button>
+          <button class="btn btn-ghost btn-small" ${clearDisabled} onclick='clearAudioTrackCue(${frame.frameIdx}, ${JSON.stringify(row.trackId)})'>清除本帧 cue</button>
+        </div>
+      </div>`;
+  }
+
+  function renderBgmEditor(frame) {
+    const rows = getBgmTrackRows(frame);
+    const empty = `<div class="field-note" data-empty-bgm>当前帧没有 BGM 轨道。可以添加一条新轨道。</div>`;
+    return `
+      <div class="field-label">BGM 轨道</div>
+      <div class="audio-track-list" id="bgm-track-list">
+        ${rows.length ? rows.map(row => renderBgmTrackRow(frame, row)).join('') : empty}
+      </div>
+      <div class="field-row" style="margin-top:8px">
+        <button class="btn btn-primary btn-small" onclick="addBgmTrack(${frame.frameIdx})">添加 BGM 轨道</button>
+        <button class="btn btn-ghost btn-small" onclick="inheritBgmFromPrevious(${frame.frameIdx})">继承上一帧 BGM</button>
+      </div>
+      <div class="field-note" id="bgm-note">每条 BGM 按 trackId 独立控制；清空路径不会删除 cue，删除请点“清除本帧 cue”。</div>`;
+  }
+
+  function ensureAudio(node) {
+    if (!node.audio || typeof node.audio !== 'object') node.audio = {};
+    return node.audio;
+  }
+
+  function writeAudioSrc(node, trackId, kind, src) {
+    if (!node || !trackId) return;
+    const audio = ensureAudio(node);
+    const existing = audio[trackId] && !audio[trackId].stop ? audio[trackId] : {};
+    const defaults = kind === 'sfx'
+      ? { volume: .8, loop: false, fade: 120 }
+      : { volume: .55, loop: true, fade: 800 };
+    audio[trackId] = { ...defaults, ...existing, src };
+  }
+
+  function stopAudioTrackOnNode(node, trackId) {
+    if (!node || !trackId) return;
+    ensureAudio(node)[trackId] = { stop: true, fade: 600 };
+  }
+
+  function deleteAudioTrack(node, trackId) {
+    if (!node?.audio || !trackId) return;
+    delete node.audio[trackId];
+    if (!Object.keys(node.audio).length) delete node.audio;
+  }
+
+  function hasStopCue(node, trackId) {
+    const cue = node?.audio?.[trackId];
+    return !!cue && (cue.stop || (cue.volume === 0 && !cue.src));
+  }
+
+  function setFieldNote(id, message, isError = false) {
+    const note = document.getElementById(id);
+    if (!note) return;
+    note.className = `field-note${isError ? ' error' : ''}`;
+    note.textContent = message;
+  }
+
+  function captureCurrentTextFields(frameIdx) {
+    const frame = storyboardFrames[frameIdx];
+    if (!frame) return;
+    const sceneNode = frame.sceneNode;
+    const overlayNode = frame.overlayNode;
+    const hint = document.getElementById('e-hint')?.value;
+    const prompt = document.getElementById('e-prompt')?.innerText;
+    const speaker = document.getElementById('e-speaker')?.value;
+    const text = document.getElementById('e-text')?.value;
+    const question = document.getElementById('e-question')?.value;
+    if (sceneNode && frame.ownsScene) {
+      if (hint !== undefined) sceneNode._hint = hint;
+      if (prompt !== undefined) sceneNode.prompt = prompt;
+    }
+    if (overlayNode) {
+      if (speaker !== undefined) overlayNode.speaker = speaker;
+      if (text !== undefined) overlayNode.text = text;
+      if (question !== undefined) overlayNode.question = question;
+    }
+  }
+
+  function refreshFrame(frameIdx) {
+    render(script, frameIdx);
+  }
+
+  function getFrameAudioEditNodes(frame) {
+    const nodes = [];
+    if (frame.ownsScene && frame.sceneNode) nodes.push(frame.sceneNode);
+    if (frame.overlayNode) nodes.push(frame.overlayNode);
+    if (!nodes.length && frame.sceneNode) nodes.push(frame.sceneNode);
+    return [...new Set(nodes)];
+  }
+
+  function clearBgmCuesOnNode(node) {
+    if (!node) return;
+    if (node.audio) {
+      Object.entries(node.audio).forEach(([trackId, cue]) => {
+        if (getAudioKind(trackId, cue) === 'bgm') delete node.audio[trackId];
+      });
+      if (!Object.keys(node.audio).length) delete node.audio;
+    }
+    if (node.bgm !== undefined) delete node.bgm;
+  }
+
+  window.inheritBgFromPrevious = function(frameIdx) {
+    const frame = storyboardFrames[frameIdx];
+    const prev = storyboardFrames[frameIdx - 1];
+    if (!frame || !prev?.sceneNode?.bg) {
+      setFieldNote('e-bg-note', '没有上一帧 bg 可继承。', true);
+      return;
+    }
+    captureCurrentTextFields(frameIdx);
+    if (!frame.sceneNode || !frame.ownsScene) {
+      setFieldNote('e-bg-note', '这一帧已经在继承上一张画面。');
+      return;
+    }
+    frame.sceneNode.bg = prev.sceneNode.bg;
+    refreshFrame(frameIdx);
+  };
+
+  window.inheritBgmFromPrevious = function(frameIdx) {
+    const frame = storyboardFrames[frameIdx];
+    if (!frame || frameIdx <= 0) {
+      setFieldNote('bgm-note', '第一帧没有上一帧 BGM 可继承。', true);
+      return;
+    }
+    captureCurrentTextFields(frameIdx);
+    getFrameAudioEditNodes(frame).forEach(clearBgmCuesOnNode);
+    refreshFrame(frameIdx);
+  };
+
+  function getUsedBgmTrackIds() {
+    const used = new Set();
+    script.forEach(node => {
+      Object.entries(node.audio || {}).forEach(([trackId, cue]) => {
+        if (getAudioKind(trackId, cue) === 'bgm') used.add(trackId);
+      });
+    });
+    document.querySelectorAll('.audio-track-row[data-kind="bgm"]').forEach(row => {
+      if (row.dataset.trackId) used.add(row.dataset.trackId);
+    });
+    return used;
+  }
+
+  function getNextBgmTrackId() {
+    const used = getUsedBgmTrackIds();
+    if (!used.has('bgm')) return 'bgm';
+    for (let i = 2; i < 100; i++) {
+      const id = `bgm${i}`;
+      if (!used.has(id)) return id;
+    }
+    return `bgm${Date.now()}`;
+  }
+
+  function getAudioRowValue(row, field) {
+    return row.querySelector(`[data-audio-field="${field}"]`)?.value.trim() || '';
+  }
+
+  function setAudioRowError(row, field, message) {
+    const input = row.querySelector(`[data-audio-field="${field}"]`);
+    input?.classList.add('error');
+    setFieldNote('bgm-note', message, true);
+  }
+
+  function parseOptionalAudioNumber(row, field, label, min, max = Infinity) {
+    const raw = getAudioRowValue(row, field);
+    if (!raw) return { ok: true, value: undefined };
+    const value = Number(raw);
+    if (!Number.isFinite(value) || value < min || value > max) {
+      setAudioRowError(row, field, `${label} 必须是 ${min}${max < Infinity ? `-${max}` : ' 以上'} 的数字。`);
+      return { ok: false };
+    }
+    return { ok: true, value };
+  }
+
+  function readOptionalVolumeInput(inputId, noteId, label = '音量') {
+    const input = document.getElementById(inputId);
+    const raw = input?.value.trim() || '';
+    if (!raw) return { ok: true, value: undefined };
+    const value = Number(raw);
+    if (!Number.isFinite(value) || value < 0 || value > 1) {
+      input?.classList.add('error');
+      setFieldNote(noteId, `${label} 必须是 0-1 的数字。`, true);
+      return { ok: false };
+    }
+    input?.classList.remove('error');
+    return { ok: true, value };
+  }
+
+  function writeAudioEvent(node, trackId, values) {
+    if (!node || !trackId) return;
+    const audio = ensureAudio(node);
+    const cue = {};
+    if (values.volume !== undefined) cue.volume = values.volume;
+    if (values.fade !== undefined) cue.fade = values.fade;
+    if (Object.keys(cue).length) audio[trackId] = cue;
+  }
+
+  function applyBgmTrackRows(audioTarget) {
+    if (!audioTarget) return true;
+    const rows = [...document.querySelectorAll('.audio-track-row[data-kind="bgm"]')];
+    for (const row of rows) {
+      if (row.dataset.dirty !== '1') continue;
+      const trackId = row.dataset.trackId;
+      const action = row.dataset.action || 'inherited';
+      const srcRaw = getAudioRowValue(row, 'src');
+      const volume = parseOptionalAudioNumber(row, 'volume', '音量', 0, 1);
+      if (!volume.ok) return false;
+      const fade = parseOptionalAudioNumber(row, 'fade', 'fade', 0);
+      if (!fade.ok) return false;
+
+      if (srcRaw) {
+        const normalized = normalizeAudioPath(srcRaw);
+        if (!normalized.ok) {
+          setAudioRowError(row, 'src', normalized.message);
+          return false;
+        }
+        writeAudioSrc(audioTarget, trackId, 'bgm', normalized.value);
+        const cue = ensureAudio(audioTarget)[trackId];
+        if (volume.value !== undefined) cue.volume = volume.value;
+        if (fade.value !== undefined) cue.fade = fade.value;
+        cue.loop = true;
+      } else if (action === 'stop') {
+        const cue = ensureAudio(audioTarget)[trackId] || {};
+        audioTarget.audio[trackId] = { stop: true, fade: fade.value ?? cue.fade ?? 600 };
+      } else if (action === 'new') {
+        writeAudioEvent(audioTarget, trackId, {
+          volume: volume.value ?? .55,
+          fade: fade.value ?? 800
+        });
+      } else if (action === 'start') {
+        // 空路径不删除当前 cue，防止误操作；删除必须点“清除本帧 cue”。
+        continue;
+      } else if (volume.value !== undefined || fade.value !== undefined) {
+        writeAudioEvent(audioTarget, trackId, { volume: volume.value, fade: fade.value });
+      }
+    }
+    return true;
+  }
+
+  window.markAudioTrackDirty = function(el) {
+    const row = el.closest('.audio-track-row');
+    if (!row) return;
+    row.dataset.dirty = '1';
+    row.classList.add('dirty');
+  };
+
+  window.addBgmTrack = function(frameIdx) {
+    const frame = storyboardFrames[frameIdx];
+    if (!frame) return;
+    const list = document.getElementById('bgm-track-list');
+    if (!list) return;
+    list.querySelector('[data-empty-bgm]')?.remove();
+    const row = {
+      trackId: getNextBgmTrackId(),
+      action: 'new',
+      status: '新轨道',
+      activeLabel: '',
+      src: '',
+      volume: .55,
+      fade: 800,
+      hasCurrentCue: false
+    };
+    list.insertAdjacentHTML('beforeend', renderBgmTrackRow(frame, row, true));
+  };
+
+  function formatAudioSize(size) {
+    if (!Number.isFinite(size)) return '';
+    if (size >= 1024 * 1024) return `${(size / 1024 / 1024).toFixed(1)} MB`;
+    if (size >= 1024) return `${Math.round(size / 1024)} KB`;
+    return `${size} B`;
+  }
+
+  window.closeAudioLibrary = function() {
+    document.getElementById('audio-library-panel')?.remove();
+  };
+
+  window.showAudioLibrary = async function(kind, frameIdx, trackId = '') {
+    closeAudioLibrary();
+    const body = document.getElementById('edit-body');
+    if (!body) return;
+
+    const titleMap = {
+      bgm: `引用已有 BGM${trackId ? ` · ${trackId}` : ''}`,
+      sfx: '引用已有 SFX',
+      'global-dialog-sfx': '引用已有全局对白音效'
+    };
+    const panel = document.createElement('div');
+    panel.id = 'audio-library-panel';
+    panel.className = 'field-note';
+    panel.style.cssText = 'margin-top:10px;padding:10px;border:1px solid rgba(255,255,255,.12);border-radius:8px;background:rgba(0,0,0,.22)';
+    panel.innerHTML = `
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px">
+        <strong>${escapeHtml(titleMap[kind] || '引用已有音频')}</strong>
+        <button class="btn btn-ghost btn-small" onclick="closeAudioLibrary()">关闭</button>
+      </div>
+      <div>正在读取 Audio/ ...</div>`;
+    body.appendChild(panel);
+
+    try {
+      const res = await fetch('/api/audio-list');
+      if (!res.ok) throw new Error(`读取失败：${res.status}`);
+      const data = await res.json();
+      const files = Array.isArray(data.files) ? data.files : [];
+      const frameArg = Number.isInteger(frameIdx) ? frameIdx : 'null';
+      const rows = files.map(file => `
+        <button class="btn btn-ghost btn-small" style="justify-content:space-between;width:100%;margin:3px 0;text-align:left"
+          onclick='pickExistingAudio(${JSON.stringify(kind)}, ${JSON.stringify(file.path)}, ${frameArg}, ${JSON.stringify(trackId || '')})'>
+          <span>${escapeHtml(file.name || file.path)}</span>
+          <span style="opacity:.55">${escapeHtml(formatAudioSize(file.size))}</span>
+        </button>`).join('');
+      panel.innerHTML = `
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px">
+          <strong>${escapeHtml(titleMap[kind] || '引用已有音频')}</strong>
+          <button class="btn btn-ghost btn-small" onclick="closeAudioLibrary()">关闭</button>
+        </div>
+        ${files.length ? rows : '<div>Audio/ 里还没有可引用的音频。</div>'}`;
+    } catch (err) {
+      panel.innerHTML = `
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px">
+          <strong>${escapeHtml(titleMap[kind] || '引用已有音频')}</strong>
+          <button class="btn btn-ghost btn-small" onclick="closeAudioLibrary()">关闭</button>
+        </div>
+        <div style="color:#ffb4b4">${escapeHtml(err.message || '读取 Audio/ 失败，请确认本地服务已重启。')}</div>`;
+    }
+  };
+
+  window.pickExistingAudio = function(kind, path, frameIdx, trackId = '') {
+    if (kind === 'global-dialog-sfx') {
+      const input = document.getElementById('g-dialog-sfx-src');
+      if (input) input.value = path;
+      closeAudioLibrary();
+      return;
+    }
+
+    const frame = storyboardFrames[frameIdx];
+    if (!frame) return;
+    captureCurrentTextFields(frameIdx);
+    const target = getAudioTarget(frame);
+    if (!target) return;
+
+    if (kind === 'bgm') {
+      if (!applyBgmTrackRows(target)) return;
+      writeAudioSrc(target, trackId, 'bgm', path);
+    } else if (kind === 'sfx') {
+      const volume = readOptionalVolumeInput('e-sfx-volume', 'sfx-note', 'SFX 音量');
+      if (!volume.ok) return;
+      const input = document.getElementById('e-sfx');
+      const sfxTrackId = trackId || input?.dataset.trackId || 'sfx';
+      writeAudioSrc(target, sfxTrackId, 'sfx', path);
+      if (volume.value !== undefined) ensureAudio(target)[sfxTrackId].volume = volume.value;
+    }
+
+    closeAudioLibrary();
+    refreshFrame(frameIdx);
+  };
+
+  window.uploadBgmTrackFile = async function(frameIdx, trackId, input) {
+    const file = input?.files?.[0];
+    if (!file) return;
+    const frame = storyboardFrames[frameIdx];
+    if (!frame) return;
+    captureCurrentTextFields(frameIdx);
+    if (!applyBgmTrackRows(getAudioTarget(frame))) return;
+    const form = new FormData();
+    form.append('file', file);
+    setFieldNote('bgm-note', `正在复制 ${trackId} 到项目目录...`);
+    try {
+      const res = await fetch('/api/audio', { method: 'POST', body: form });
+      if (!res.ok) throw new Error(`上传失败：${res.status}`);
+      const data = await res.json();
+      writeAudioSrc(getAudioTarget(frame), trackId, 'bgm', data.path);
+      refreshFrame(frameIdx);
+    } catch (err) {
+      setFieldNote('bgm-note', err.message || '文件复制失败，请确认本地服务已重启。', true);
+    } finally {
+      if (input) input.value = '';
+    }
+  };
+
+  window.stopBgmTrack = function(frameIdx, trackId) {
+    const frame = storyboardFrames[frameIdx];
+    if (!frame) return;
+    captureCurrentTextFields(frameIdx);
+    if (!applyBgmTrackRows(getAudioTarget(frame))) return;
+    // 删除到结尾：当前帧写 stop，后续所有同 trackId cue 全部删除
+    stopAudioTrackOnNode(getAudioTarget(frame), trackId);
+    for (let i = frameIdx + 1; i < currentScript.length; i++) {
+      const node = getAudioTarget(storyboardFrames[i]);
+      if (node?.audio?.[trackId]) delete node.audio[trackId];
+    }
+    refreshFrame(frameIdx);
+  };
+
+  window.clearAudioTrackCue = function(frameIdx, trackId) {
+    const frame = storyboardFrames[frameIdx];
+    if (!frame) return;
+    captureCurrentTextFields(frameIdx);
+    if (!applyBgmTrackRows(getAudioTarget(frame))) return;
+    deleteAudioTrack(getAudioTarget(frame), trackId);
+    refreshFrame(frameIdx);
+  };
+
+  window.uploadFrameFile = async function(frameIdx, kind, input) {
+    const file = input?.files?.[0];
+    if (!file) return;
+    const frame = storyboardFrames[frameIdx];
+    if (!frame) return;
+    captureCurrentTextFields(frameIdx);
+
+    const endpoint = kind === 'bg' ? '/api/assets' : '/api/audio';
+    const form = new FormData();
+    form.append('file', file);
+
+    const noteId = kind === 'bg' ? 'e-bg-note' : `${kind}-note`;
+    setFieldNote(noteId, '正在复制到项目目录...');
+    try {
+      const res = await fetch(endpoint, { method: 'POST', body: form });
+      if (!res.ok) throw new Error(`上传失败：${res.status}`);
+      const data = await res.json();
+      const path = data.path;
+      if (kind === 'bg') {
+        if (!frame.sceneNode || !frame.ownsScene) {
+          setFieldNote(noteId, '这一帧继承上一张画面，不能直接替换 bg。', true);
+          return;
+        }
+        frame.sceneNode.bg = path;
+      } else {
+        const target = getAudioTarget(frame);
+        const inputEl = document.getElementById(`e-${kind}`);
+        const trackId = inputEl?.dataset.trackId || kind;
+        writeAudioSrc(target, trackId, kind === 'sfx' ? 'sfx' : 'bgm', path);
+        if (kind === 'sfx') {
+          const volume = readOptionalVolumeInput('e-sfx-volume', 'sfx-note', 'SFX 音量');
+          if (!volume.ok) return;
+          if (volume.value !== undefined) ensureAudio(target)[trackId].volume = volume.value;
+        }
+      }
+      refreshFrame(frameIdx);
+    } catch (err) {
+      setFieldNote(noteId, err.message || '文件复制失败，请确认本地服务已重启。', true);
+    } finally {
+      if (input) input.value = '';
+    }
+  };
+
+  window.stopAudioTrack = function(frameIdx, kind) {
+    const frame = storyboardFrames[frameIdx];
+    if (!frame) return;
+    captureCurrentTextFields(frameIdx);
+    const target = getAudioTarget(frame);
+    const inputEl = document.getElementById(`e-${kind}`);
+    const trackId = inputEl?.dataset.trackId || getActiveAudioTrack(frame, kind === 'sfx' ? 'sfx' : 'bgm', kind).trackId || kind;
+    stopAudioTrackOnNode(target, trackId);
+    refreshFrame(frameIdx);
+  };
+
+  window.deleteFrameSfx = function(frameIdx) {
+    const frame = storyboardFrames[frameIdx];
+    if (!frame) return;
+    captureCurrentTextFields(frameIdx);
+    const target = getAudioTarget(frame);
+    const inputEl = document.getElementById('e-sfx');
+    const trackId = inputEl?.dataset.trackId || 'sfx';
+    deleteAudioTrack(target, trackId);
+    refreshFrame(frameIdx);
+  };
+
+  function showEditPanel(frame, allScript) {
+    const body = document.getElementById('edit-body');
+    const sceneNode = frame.sceneNode;
+    const overlayNode = frame.overlayNode;
+    const sfxMeta = getAudioEditorMeta(frame, 'sfx', 'sfx');
+    const rawRange = `nodes #${String(frame.rawStart+1).padStart(3,'0')}${frame.rawEnd !== frame.rawStart ? `-#${String(frame.rawEnd+1).padStart(3,'0')}` : ''}`;
+
+    body.innerHTML = `
+      <div class="field-label">帧 ID</div>
+      <div class="field-val">#${String(frame.frameIdx+1).padStart(3,'0')} · ${rawRange}</div>
+
+      <div class="field-label">类型</div>
+      <div class="field-val"><span class="frame-type type-${overlayNode?.type || sceneNode?.type || 'panel'}">${getFrameType(frame)}</span></div>
+
+      ${sceneNode && frame.ownsScene ? `
+      <div class="field-label">画面 _hint</div>
+      <textarea class="field-input" id="e-hint" rows="2">${escapeHtml(sceneNode._hint || '')}</textarea>
+
+      <div class="field-label">画面 prompt</div>
+      <div class="prompt-box" id="e-prompt">${escapeHtml(sceneNode.prompt || buildPrompt(sceneNode))}</div>
+      <div style="display:flex;gap:8px;margin-top:6px">
+        <button class="btn btn-ghost" onclick="document.getElementById('e-prompt').contentEditable='true';this.style.display='none'">编辑</button>
+        <button class="btn btn-primary" onclick="navigator.clipboard.writeText(document.getElementById('e-prompt').innerText)">复制 prompt</button>
+      </div>
+
+      <div class="field-label">bg 路径</div>
+      <div class="field-row">
+        <input class="field-input" id="e-bg" autocomplete="off" value="${escapeHtml((sceneNode.bg||'').startsWith('data:') ? '[base64]' : (sceneNode.bg||''))}">
+        <button class="btn btn-primary btn-small" onclick="document.getElementById('e-bg-file').click()">选择图片</button>
+        <button class="btn btn-ghost btn-small" onclick="inheritBgFromPrevious(${frame.frameIdx})">继承上一帧</button>
+        <input class="file-input" id="e-bg-file" type="file" accept="image/*" onchange="uploadFrameFile(${frame.frameIdx}, 'bg', this)">
+      </div>
+      <div class="field-note" id="e-bg-note">可选择本地图片复制到 dist/assets/，也可粘贴项目内路径。</div>
+      ` : sceneNode ? `
+      <div class="field-label">继承画面</div>
+      <div class="field-val">继承自 raw scene #${String(frame.sceneIdx + 1).padStart(3,'0')}：${escapeHtml(sceneNode._hint || sceneNode.bg || '')}</div>
+      <div class="field-row" style="margin-top:8px">
+        <button class="btn btn-ghost btn-small" onclick="inheritBgFromPrevious(${frame.frameIdx})">继承上一帧</button>
+      </div>
+      <div class="field-note" id="e-bg-note">这一帧不直接改背景，避免影响前后共用同一画面的对白帧。</div>
+      ` : `
+      <div class="field-label">画面</div>
+      <div class="field-val">无 scene 背景</div>
+      `}
+
+      ${overlayNode && (overlayNode.type === 'dialog' || overlayNode.type === 'narrate') ? `
+      <div class="field-label">说话人</div>
+      <input class="field-input" id="e-speaker" value="${escapeHtml(overlayNode.speaker || '')}">
+      <div class="field-label">对话文案</div>
+      <textarea class="field-input" id="e-text" rows="3">${escapeHtml(overlayNode.text || '')}</textarea>
+      ` : ''}
+
+      ${overlayNode?.type === 'choice' ? `
+      <div class="field-label">选择题问题</div>
+      <textarea class="field-input" id="e-question" rows="2">${escapeHtml(overlayNode.question || '')}</textarea>
+      ` : ''}
+
+      ${renderBgmEditor(frame)}
+
+      <div class="field-label">SFX</div>
+      <div class="field-row">
+        <input class="field-input" id="e-sfx" data-track-id="${escapeHtml(sfxMeta.trackId)}" placeholder="Audio/xxx.mp3 或留空" value="${escapeHtml(sfxMeta.src || '')}">
+        <button class="btn btn-primary btn-small" onclick="document.getElementById('e-sfx-file').click()">导入音频</button>
+        <button class="btn btn-ghost btn-small" onclick="showAudioLibrary('sfx', ${frame.frameIdx})">引用已有</button>
+        <button class="btn btn-warn btn-small" onclick="deleteFrameSfx(${frame.frameIdx})">删除本帧</button>
+        <input class="file-input" id="e-sfx-file" type="file" accept="audio/*" onchange="uploadFrameFile(${frame.frameIdx}, 'sfx', this)">
+      </div>
+      <div class="audio-param-row">
+        <label>SFX 音量
+          <input class="field-input" id="e-sfx-volume" placeholder="0-1" value="${escapeHtml(sfxMeta.volume)}">
+        </label>
+      </div>
+      <div class="field-note" id="sfx-note">保存时写入 audio.${escapeHtml(sfxMeta.trackId || 'sfx')}；一次性声效可直接删除本帧。</div>
+
+      <div class="edit-actions">
+        <button class="btn btn-primary" id="save-frame-btn" onclick="saveFrame(${frame.frameIdx})">保存到 story.json</button>
+        <button class="btn btn-ghost" onclick="document.getElementById('edit-body').innerHTML='<div style=\\'color:rgba(255,255,255,.2);font-size:12px;margin-top:40px;text-align:center\\'>← 点击左侧帧开始编辑</div>'">取消</button>
+      </div>`;
+  }
+
+  window.saveFrame = function(frameIdx) {
+    const frame = storyboardFrames[frameIdx];
+    if (!frame) return;
+    const sceneNode = frame.sceneNode;
+    const overlayNode = frame.overlayNode;
+    const audioTarget = overlayNode || sceneNode;
+
+    const hint = document.getElementById('e-hint')?.value;
+    const prompt = document.getElementById('e-prompt')?.innerText;
+    const bg = document.getElementById('e-bg')?.value;
+    const bgInput = document.getElementById('e-bg');
+    const bgNote = document.getElementById('e-bg-note');
+    const speaker = document.getElementById('e-speaker')?.value;
+    const text = document.getElementById('e-text')?.value;
+    const question = document.getElementById('e-question')?.value;
+    const sfxInput = document.getElementById('e-sfx');
+    const sfx = sfxInput?.value;
+
+    if (sceneNode && frame.ownsScene) {
+      if (hint !== undefined) sceneNode._hint = hint;
+      if (prompt !== undefined) sceneNode.prompt = prompt;
+      if (bg !== undefined && bg !== '[base64]') {
+        const normalized = normalizeBgPath(bg);
+        if (!normalized.ok) {
+          bgInput?.classList.add('error');
+          if (bgNote) {
+            bgNote.className = 'field-note error';
+            bgNote.textContent = normalized.message;
+          }
+          return;
+        }
+        sceneNode.bg = normalized.value;
+      }
+    }
+
+    if (overlayNode) {
+      if (speaker !== undefined) overlayNode.speaker = speaker;
+      if (text !== undefined) overlayNode.text = text;
+      if (question !== undefined) overlayNode.question = question;
+    }
+
+    if (audioTarget) {
+      if (!applyBgmTrackRows(audioTarget)) return;
+      if (sfx !== undefined) {
+        const trackId = sfxInput?.dataset.trackId || 'sfx';
+        const raw = sfx.trim();
+        const sfxVolume = readOptionalVolumeInput('e-sfx-volume', 'sfx-note', 'SFX 音量');
+        if (!sfxVolume.ok) return;
+        if (raw) {
+          const normalized = normalizeAudioPath(raw);
+          if (!normalized.ok) {
+            sfxInput?.classList.add('error');
+            setFieldNote('sfx-note', normalized.message, true);
+            return;
+          }
+          writeAudioSrc(audioTarget, trackId, 'sfx', normalized.value);
+          if (sfxVolume.value !== undefined) ensureAudio(audioTarget)[trackId].volume = sfxVolume.value;
+        } else if (sfxVolume.value !== undefined && audioTarget.audio?.[trackId]?.src) {
+          audioTarget.audio[trackId].volume = sfxVolume.value;
+        } else if (!hasStopCue(audioTarget, trackId)) {
+          deleteAudioTrack(audioTarget, trackId);
+        }
+      }
+    }
+
+    fetch('/api/story', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ frames: script, settings: storySettings })
+    }).then(() => {
+      render(script, frameIdx);
+      const btn = document.getElementById('save-frame-btn');
+      if (btn) { btn.textContent = '已保存 ✓'; setTimeout(() => btn.textContent = '保存到 story.json', 1500); }
+    });
+  };
+
+  const selected = storyboardFrames[Math.min(selectedFrameIdx, storyboardFrames.length - 1)] || storyboardFrames[0];
+  const selectedChapterIdx = Math.max(0, chapterOrder.indexOf(selected?.chapter));
+  showChapter(chapterOrder[selectedChapterIdx], selectedChapterIdx);
+  if (selected) activateFrame(selected.frameIdx, { sendPreview: true, scroll: false });
+}
+
+window.showGlobalSettings = function() {
+  const s = storySettings.dialogSfx;
+  const fileId = 'global-dialog-sfx-file';
+  document.getElementById('edit-body').innerHTML = `
+    <div class="field-label" style="margin-top:8px">全局对白框出现音效</div>
+    <div class="field-row">
+      <input class="field-input" id="g-dialog-sfx-src" value="${escapeHtml(s.src||'')}" placeholder="Audio/对话框出现.mp3">
+      <button class="btn btn-primary btn-small" onclick="document.getElementById('${fileId}').click()">导入音频</button>
+      <button class="btn btn-ghost btn-small" onclick="showAudioLibrary('global-dialog-sfx')">引用已有</button>
+      <input class="file-input" id="${fileId}" type="file" accept="audio/*" onchange="uploadGlobalDialogSfx(this)">
+    </div>
+    <div class="field-label">音量</div>
+    <input class="field-input" id="g-dialog-sfx-vol" type="number" min="0" max="1" step="0.05" value="${Math.max(0, Math.min(1, Number(s.volume ?? 0.7)))}" placeholder="0-1">
+    <div class="field-label">开关</div>
+    <select class="field-input" id="g-dialog-sfx-enabled">
+      <option value="1" ${s.enabled !== false ? 'selected' : ''}>开启</option>
+      <option value="0" ${s.enabled === false ? 'selected' : ''}>关闭</option>
+    </select>
+    <div class="edit-actions">
+      <button class="btn btn-primary" onclick="saveGlobalSettings()">保存全局设置</button>
+    </div>`;
+};
+
+window.uploadGlobalDialogSfx = function(input) {
+  if (!input.files[0]) return;
+  const form = new FormData();
+  form.append('file', input.files[0], input.files[0].name);
+  fetch('/api/audio', { method: 'POST', body: form })
+    .then(r => r.json())
+    .then(d => { if (d.path) document.getElementById('g-dialog-sfx-src').value = d.path; });
+};
+
+window.saveGlobalSettings = function() {
+  const rawVolume = Number(document.getElementById('g-dialog-sfx-vol').value);
+  storySettings.dialogSfx = {
+    src: document.getElementById('g-dialog-sfx-src').value.trim(),
+    volume: Number.isFinite(rawVolume) ? Math.max(0, Math.min(1, rawVolume)) : 0.7,
+    enabled: document.getElementById('g-dialog-sfx-enabled').value === '1'
+  };
+  const btn = event.target;
+  fetch('/api/story', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ frames: currentScript, settings: storySettings })
+  }).then(() => { btn.textContent = '已保存 ✓'; setTimeout(() => btn.textContent = '保存全局设置', 1500); });
+};
+
+window.saveAllFrames = function() {
+  const btn = document.getElementById('save-all-btn');
+  if (btn) btn.textContent = '保存中…';
+  fetch('/api/story', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ frames: currentScript, settings: storySettings })
+  }).then(() => {
+    if (btn) { btn.textContent = '已保存全部 ✓'; setTimeout(() => btn.textContent = '保存全部', 2000); }
+  }).catch(() => {
+    if (btn) { btn.textContent = '保存失败'; setTimeout(() => btn.textContent = '保存全部', 2000); }
+  });
+};
+</script>
+</body>
+</html>

@@ -1,0 +1,47 @@
+{
+  "frames": [
+    {
+      "type": "scene",
+      "id": "opening",
+      "bg": "dist/assets/stadium-night.svg",
+      "speaker": "你",
+      "text": "决赛前夜，手机在更衣室长椅上亮起。教练只发来一句话：明天，你想成为什么样的人？"
+    },
+    {
+      "type": "choice",
+      "id": "first_choice",
+      "text": "你怎么回复？",
+      "options": [
+        {
+          "label": "我要承担最后一脚",
+          "next": "brave"
+        },
+        {
+          "label": "我要先守住全队",
+          "next": "steady"
+        }
+      ]
+    },
+    {
+      "type": "scene",
+      "id": "brave",
+      "bg": "dist/assets/stadium-night.svg",
+      "speaker": "你",
+      "text": "你盯着球鞋上的泥点，打出：把球给我。"
+    },
+    {
+      "type": "scene",
+      "id": "steady",
+      "bg": "dist/assets/stadium-night.svg",
+      "speaker": "你",
+      "text": "你看向队友熟睡的方向，打出：先一起活到最后一分钟。"
+    },
+    {
+      "type": "ending",
+      "id": "ending",
+      "bg": "dist/assets/stadium-night.svg",
+      "title": "哨声之前",
+      "text": "天亮之前，真正的比赛已经开始。"
+    }
+  ]
+}
