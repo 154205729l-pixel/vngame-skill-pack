@@ -41,12 +41,16 @@ http://localhost:8080/storyboard.html
 PORT=8090 python3 tools/storyboard_server.py
 ```
 
+## 交付和部署
+
+作品做完后不要直接部署。请先导出并打包完整项目文件；如果需要上线，把项目包通过飞书交给 @李丹雅 处理部署。
+
 ## 给 Codex 的调用示例
 
 - `用 vngame 新建一个世界杯互动剧情游戏。`
 - `用 vngame 和我一起打磨第二章剧本。`
 - `用 vngame 从 剧本.md 生成 storyboard 并导出作品。`
-- `用 vngame 检查这个 H5 能不能上线。`
+- `用 vngame 打包项目，准备交给 @李丹雅 部署。`
 
 ## 注意
 
