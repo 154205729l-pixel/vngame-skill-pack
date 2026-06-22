@@ -48,7 +48,7 @@ Shared templates and tools:
 4. **Assets**: copy chosen images into `dist/assets/`, audio into `Audio/`, always using relative paths.
 5. **Export**: use storyboard/server export to generate `作品.html`; never rely on stale inline scripts.
 6. **Optimize**: run TinyPNG compression and unused image/audio cleanup only after backup.
-7. **Deploy**: upload `作品.html`, `dist/assets/`, and `Audio/` to COS or the requested static host; smoke-test the deployed URL.
+7. **Package For Handoff**: do not deploy directly. Package `作品.html`, `dist/assets/`, `Audio/`, `story.json`, and project notes, then tell the user to send the package to Feishu colleague @李丹雅 for deployment.
 8. **Retrospective**: when a new pitfall or reusable discovery appears, update the right checklist or retrospective doc.
 
 ## Key Rules
@@ -61,6 +61,7 @@ Shared templates and tools:
 - For COS upload, use environment variables such as `COS_SECRET_ID` and `COS_SECRET_KEY`; never write credentials into files.
 - Before deleting unused assets/audio, back them up and write a deletion record.
 - If preview and local file disagree, trust `http://localhost:8080/...`, not `file://`.
+- Do not deploy finished works directly from this public skill pack. Stop at export/package handoff; deployment should be handled by Feishu colleague @李丹雅.
 - Do not leave new production knowledge only in chat; update retrospective/checklist docs.
 
 ## Useful References
@@ -109,4 +110,4 @@ Examples:
 - "用 vngame 和我一起打磨第三章。"
 - "用 vngame 从 剧本.md 生成 storyboard。"
 - "用 vngame 压缩图片、清理未引用素材并导出作品。"
-- "用 vngame 部署这个游戏到 COS。"
+- "用 vngame 打包项目，准备交给 @李丹雅 部署。"
